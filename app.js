@@ -53,20 +53,31 @@ app.use(passport.session());
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${RENDER_EXTERNAL_URL}/auth/google/callback`
+    callbackURL: `${RENDER_EXTERNAL_URL}/auth/google/callback`,
+    passReqToCallback: true
   },
-  async function(accessToken, refreshToken, profile, cb) {
+  async function(req, accessToken, refreshToken, profile, cb) {
     try {
+      console.log('Google Strategy callback:', {
+        profileId: profile.id,
+        email: profile.emails?.[0]?.value
+      });
+      
       let user = await User.findOne({ googleId: profile.id });
       if (!user) {
+        console.log('Creating new user...');
         user = await User.create({
           googleId: profile.id,
           email: profile.emails[0].value,
           username: profile.emails[0].value.split('@')[0]
         });
+        console.log('New user created:', user.username);
+      } else {
+        console.log('Existing user found:', user.username);
       }
       return cb(null, user);
     } catch (err) {
+      console.error('Google Strategy error:', err);
       return cb(err);
     }
   }
