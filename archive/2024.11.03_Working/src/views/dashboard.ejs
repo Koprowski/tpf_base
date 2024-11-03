@@ -1,0 +1,49 @@
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+        <p class="mb-4">Welcome, <%= user.username %>!</p>
+        
+        <!-- Create New Page Form -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">Create New Page</h2>
+            <form action="/api/pages/create" method="POST" class="space-y-4">
+                <div>
+                    <label for="pageName" class="block text-sm font-medium text-gray-700">Page Name</label>
+                    <input type="text" id="pageName" name="pageName" required
+                        class="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-blue-500"
+                        pattern="[A-Za-z0-9\s\-_]+"
+                        title="Only letters, numbers, spaces, hyphens, and underscores are allowed">
+                </div>
+                <div>
+                    <label for="content" class="block text-sm font-medium text-gray-700">Content</label>
+                    <textarea id="content" name="content" rows="4" required
+                        class="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-blue-500"></textarea>
+                </div>
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Create Page
+                </button>
+            </form>
+        </div>
+
+        <!-- List of Pages -->
+        <div>
+            <h2 class="text-xl font-semibold mb-4">Your Pages</h2>
+            <% if (user.pages && user.pages.length > 0) { %>
+                <div class="space-y-4">
+                    <% user.pages.forEach(page => { %>
+                        <div class="border rounded p-4 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-medium"><%= page.pageName %></h3>
+                                <p class="text-sm text-gray-500">Created: <%= new Date(page.createdAt).toLocaleDateString() %></p>
+                            </div>
+                            <a href="/<%= user.username %>/<%= encodeURIComponent(page.pageName) %>" 
+                               class="text-blue-500 hover:text-blue-600">View Page</a>
+                        </div>
+                    <% }) %>
+                </div>
+            <% } else { %>
+                <p class="text-gray-600">You haven't created any pages yet.</p>
+            <% } %>
+        </div>
+    </div>
+</div>
