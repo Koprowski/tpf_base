@@ -10,10 +10,7 @@ const expressLayouts = require('express-ejs-layouts');
 const User = require('./src/models/User');
 
 const app = express();
-
-// Force production mode on Render
-const isProduction = true; // Changed this to force production mode
-const RENDER_EXTERNAL_URL = 'https://tpf-base.onrender.com'; // Add your Render URL
+const RENDER_EXTERNAL_URL = 'https://tpf-base.onrender.com';
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -33,19 +30,20 @@ app.use(expressLayouts);
 // Session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
+  resave: true,
+  saveUninitialized: true,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
     ttl: 60 * 60 * 24 * 7,
-    autoRemove: 'native',
-    touchAfter: 24 * 3600
+    autoRemove: 'native'
   }),
   cookie: {
     maxAge: 1000 * 60 * 60 * 24 * 7,
-    secure: true, // Force secure cookies
-    sameSite: 'none' // Required for cross-site cookie handling
-  }
+    secure: true,
+    sameSite: 'none',
+    domain: '.onrender.com'
+  },
+  proxy: true
 }));
 
 // Passport configuration
@@ -75,11 +73,17 @@ passport.use(new GoogleStrategy({
 ));
 
 passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser((id, done) => {
-  User.findById(id)
-    .then(user => done(null, user))
-    .catch(err => done(err));
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err);
+  }
 });
+
+// Trust proxy
+app.set('trust proxy', 1);
 
 // Basic routes
 app.get('/', (req, res) => {
