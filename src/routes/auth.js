@@ -3,58 +3,46 @@ const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 
-// Add logging middleware
-const logRequest = (req, res, next) => {
-  console.log('Auth Request:', {
-    path: req.path,
-    method: req.method,
-    session: req.session ? 'exists' : 'none',
-    user: req.user ? 'exists' : 'none'
-  });
-  next();
-};
-
-router.use(logRequest);
-
-router.get('/google',
-  (req, res, next) => {
-    console.log('Starting Google auth...');
-    next();
-  },
-  passport.authenticate('google', { 
+router.get('/google', (req, res, next) => {
+  console.log('Starting Google authentication...');
+  passport.authenticate('google', {
     scope: ['profile', 'email'],
-    prompt: 'select_account',
     accessType: 'offline',
-    includeGrantedScopes: true
-  })
-);
+    prompt: 'select_account'
+  })(req, res, next);
+});
 
-router.get('/google/callback',
-  (req, res, next) => {
-    console.log('Received Google callback:', {
-      query: req.query,
-      error: req.query.error
-    });
-    next();
-  },
-  passport.authenticate('google', { 
+router.get('/google/callback', (req, res, next) => {
+  console.log('Google callback received');
+  passport.authenticate('google', {
     failureRedirect: '/',
     failureMessage: true,
-    successReturnToOrRedirect: '/dashboard'
-  }),
-  (req, res) => {
-    console.log('Authentication successful, redirecting...');
-    res.redirect('/dashboard');
-  }
-);
+    successRedirect: '/dashboard'
+  })(req, res, next);
+});
 
-router.get('/logout', function(req, res, next) {
+router.get('/logout', (req, res, next) => {
+  console.log('Logging out user:', req.user?.username);
   req.logout(function(err) {
-    if (err) { 
+    if (err) {
       console.error('Logout error:', err);
-      return next(err); 
+      return next(err);
     }
     res.redirect('/');
+  });
+});
+
+// Debug route to check session
+router.get('/session', (req, res) => {
+  res.json({
+    sessionExists: !!req.session,
+    sessionID: req.sessionID,
+    isAuthenticated: req.isAuthenticated(),
+    user: req.user ? {
+      id: req.user.id,
+      username: req.user.username,
+      email: req.user.email
+    } : null
   });
 });
 
