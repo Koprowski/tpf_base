@@ -10,7 +10,10 @@ const expressLayouts = require('express-ejs-layouts');
 const User = require('./src/models/User');
 
 const app = express();
-const isProduction = process.env.NODE_ENV === 'production';
+
+// Force production mode on Render
+const isProduction = true; // Changed this to force production mode
+const RENDER_EXTERNAL_URL = 'https://tpf-base.onrender.com'; // Add your Render URL
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -40,8 +43,8 @@ app.use(session({
   }),
   cookie: {
     maxAge: 1000 * 60 * 60 * 24 * 7,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax'
+    secure: true, // Force secure cookies
+    sameSite: 'none' // Required for cross-site cookie handling
   }
 }));
 
@@ -52,7 +55,7 @@ app.use(passport.session());
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "https://tpf-base.onrender.com/auth/google/callback"
+    callbackURL: `${RENDER_EXTERNAL_URL}/auth/google/callback`
   },
   async function(accessToken, refreshToken, profile, cb) {
     try {
@@ -105,7 +108,7 @@ const startServer = async () => {
       console.log(`
 ====================================
 🚀 Server is running on port ${PORT}
-📁 View the app at http://${isProduction ? 'tpf-base.onrender.com' : 'localhost:' + PORT}
+📁 View the app at ${RENDER_EXTERNAL_URL}
 ====================================
       `);
     }).on('error', (err) => {
