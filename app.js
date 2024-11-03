@@ -52,9 +52,7 @@ app.use(passport.session());
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: isProduction 
-      ? "https://tpf-ai.onrender.com/auth/google/callback"
-      : "http://localhost:3000/auth/google/callback"
+    callbackURL: "https://tpf-base.onrender.com/auth/google/callback"
   },
   async function(accessToken, refreshToken, profile, cb) {
     try {
@@ -107,7 +105,7 @@ const startServer = async () => {
       console.log(`
 ====================================
 🚀 Server is running on port ${PORT}
-📁 View the app at http://${isProduction ? 'tpf-ai.onrender.com' : 'localhost:' + PORT}
+📁 View the app at http://${isProduction ? 'tpf-base.onrender.com' : 'localhost:' + PORT}
 ====================================
       `);
     }).on('error', (err) => {
