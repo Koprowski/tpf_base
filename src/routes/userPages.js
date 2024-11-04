@@ -2,8 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Page = require('../models/Page');
 
-router.get('/:username/:pagename', async (req, res) => {
+router.get('/:username/:urlId', async (req, res) => {
   try {
     console.log('Accessing page:', req.params);
     const user = await User.findOne({ username: req.params.username });
@@ -13,10 +14,13 @@ router.get('/:username/:pagename', async (req, res) => {
       return res.status(404).render('404', { message: 'User not found' });
     }
     
-    const page = user.pages.find(p => p.pageName === decodeURIComponent(req.params.pagename));
+    const page = await Page.findOne({ 
+      urlId: req.params.urlId,
+      author: user._id 
+    });
     
     if (!page) {
-      console.log('Page not found:', req.params.pagename);
+      console.log('Page not found:', req.params.urlId);
       return res.status(404).render('404', { message: 'Page not found' });
     }
     
@@ -24,7 +28,7 @@ router.get('/:username/:pagename', async (req, res) => {
       page, 
       user, 
       currentUser: req.user,
-      title: page.pageName 
+      title: page.title 
     });
   } catch (error) {
     console.error('Error accessing page:', error);

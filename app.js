@@ -8,6 +8,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const expressLayouts = require('express-ejs-layouts');
 const User = require('./src/models/User');
+const Page = require('./src/models/Page');
 
 const app = express();
 const RENDER_EXTERNAL_URL = 'https://tpf-base.onrender.com';
@@ -109,13 +110,23 @@ app.get('/', (req, res) => {
   res.render('index', { user: req.user });
 });
 
-app.get('/dashboard', (req, res) => {
+app.get('/dashboard', async (req, res) => {
   if (!req.user) {
     console.log('Unauthorized dashboard access attempt');
     return res.redirect('/auth/google');
   }
-  console.log('Rendering dashboard for user:', req.user.username);
-  res.render('dashboard', { user: req.user });
+  try {
+    const pages = await Page.find({ author: req.user._id })
+      .sort({ createdAt: -1 });
+    console.log('Rendering dashboard for user:', req.user.username);
+    res.render('dashboard', { user: req.user, pages });
+  } catch (error) {
+    console.error('Error fetching pages:', error);
+    res.status(500).render('error', { 
+      message: 'Error loading dashboard', 
+      error: error 
+    });
+  }
 });
 
 // Auth routes
