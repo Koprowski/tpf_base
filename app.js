@@ -10,6 +10,11 @@ const expressLayouts = require('express-ejs-layouts');
 const flash = require('connect-flash');
 const User = require('./src/models/User');
 const Page = require('./src/models/Page');
+const userRoutes = require('./src/routes/users.js'); // Updated with .js extension
+const authRoutes = require('./src/routes/auth');
+const apiRoutes = require('./src/routes/api');
+const pageRoutes = require('./src/routes/pages');
+const userPageRoutes = require('./src/routes/userPages');
 
 const app = express();
 const RENDER_EXTERNAL_URL = 'https://tpf-base.onrender.com';
@@ -141,20 +146,12 @@ app.get('/dashboard', async (req, res) => {
   }
 });
 
-// Auth routes
-app.use('/auth', require('./src/routes/auth'));
-
-// API routes for creating/updating pages
-app.use('/api', require('./src/routes/api'));
-
-// User profile routes
-app.use('/', require('./src/routes/users'));
-
-// Page routes
-app.use('/', require('./src/routes/pages'));
-
-// User page routes (must be last)
-app.use('/', require('./src/routes/userPages'));
+// Routes
+app.use('/auth', authRoutes);
+app.use('/api', apiRoutes);
+app.use('/', userRoutes);
+app.use('/', pageRoutes);
+app.use('/', userPageRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
