@@ -28,6 +28,13 @@ router.post('/pages/create', isAuthenticated, async (req, res) => {
   try {
     const { title, content } = req.body;
     
+    if (!title) {
+      return res.status(400).render('error', {
+        message: 'Title is required',
+        error: { message: 'Please provide a title for the page' }
+      });
+    }
+
     const page = await Page.create({
       title,
       content,
