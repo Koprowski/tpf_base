@@ -105,9 +105,9 @@
                     
                     <!-- Navigation Links -->
                     <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="/" class="inline-flex items-center px-1 pt-1 text-gray-900">Home</a>
+                        <a href="/" class="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-blue-600">Home</a>
                         <% if (typeof user !== 'undefined' && user) { %>
-                            <a href="/dashboard" class="inline-flex items-center px-1 pt-1 text-gray-900">Dashboard</a>
+                            <a href="/dashboard" class="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-blue-600">Dashboard</a>
                         <% } %>
                     </div>
                 </div>
@@ -116,8 +116,14 @@
                 <div class="flex items-center">
                     <% if (typeof user !== 'undefined' && user) { %>
                         <div class="relative ml-3">
-                            <div class="flex items-center">
-                                <span class="text-gray-700 mr-4"><%= user.username %></span>
+                            <div class="flex items-center space-x-4">
+                                <!-- Username with link to profile -->
+                                <a href="/profile" class="text-gray-700 hover:text-blue-600 font-medium flex items-center group">
+                                    <div class="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center mr-2 group-hover:bg-blue-600">
+                                        <%= user.username.charAt(0).toUpperCase() %>
+                                    </div>
+                                    <span><%= user.username %></span>
+                                </a>
                                 <a href="/auth/logout" class="text-red-600 hover:text-red-800">
                                     Logout
                                 </a>
@@ -129,6 +135,17 @@
                         </a>
                     <% } %>
                 </div>
+            </div>
+        </div>
+
+        <!-- Mobile menu -->
+        <div class="sm:hidden">
+            <div class="pt-2 pb-3 space-y-1">
+                <a href="/" class="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Home</a>
+                <% if (typeof user !== 'undefined' && user) { %>
+                    <a href="/dashboard" class="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Dashboard</a>
+                    <a href="/profile" class="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Profile</a>
+                <% } %>
             </div>
         </div>
     </nav>

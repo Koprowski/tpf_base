@@ -22,7 +22,11 @@
                     <div class="border rounded p-4 hover:bg-gray-50">
                         <a href="/<%= profileUser.username %>/<%= page.urlId %>" class="block">
                             <h3 class="font-medium text-lg text-blue-600 hover:text-blue-800"><%= page.title %></h3>
-                            <p class="text-sm text-gray-500 mt-1">Created <%= new Date(page.createdAt).toLocaleDateString() %></p>
+                            <div class="mt-1 text-sm text-gray-500">
+                                <span>Created <%= new Date(page.createdAt).toLocaleDateString() %></span>
+                                <span class="mx-2">•</span>
+                                <span>URL: /<%= profileUser.username %>/<%= page.urlId %></span>
+                            </div>
                         </a>
                     </div>
                 <% }) %>
