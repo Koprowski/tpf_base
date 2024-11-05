@@ -7,6 +7,7 @@ const MongoStore = require('connect-mongo');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const expressLayouts = require('express-ejs-layouts');
+const flash = require('connect-flash');
 const User = require('./src/models/User');
 const Page = require('./src/models/Page');
 
@@ -49,6 +50,9 @@ app.use(session({
   }
 }));
 
+// Initialize flash messages
+app.use(flash());
+
 // Initialize passport
 app.use(passport.initialize());
 app.use(passport.session());
@@ -69,7 +73,8 @@ passport.use(new GoogleStrategy({
         user = await User.create({
           googleId: profile.id,
           email: profile.emails[0].value,
-          username: profile.emails[0].value.split('@')[0]
+          username: profile.emails[0].value.split('@')[0],
+          createdAt: new Date()
         });
       }
       
@@ -107,7 +112,10 @@ app.use((req, res, next) => {
 
 // Basic routes
 app.get('/', (req, res) => {
-  res.render('index', { user: req.user });
+  res.render('index', { 
+    user: req.user,
+    title: 'Welcome to TPF Base'
+  });
 });
 
 app.get('/dashboard', async (req, res) => {
@@ -119,7 +127,11 @@ app.get('/dashboard', async (req, res) => {
     const pages = await Page.find({ author: req.user._id })
       .sort({ createdAt: -1 });
     console.log('Rendering dashboard for user:', req.user.username);
-    res.render('dashboard', { user: req.user, pages });
+    res.render('dashboard', { 
+      user: req.user, 
+      pages,
+      title: 'Dashboard'
+    });
   } catch (error) {
     console.error('Error fetching pages:', error);
     res.status(500).render('error', { 
@@ -135,8 +147,32 @@ app.use('/auth', require('./src/routes/auth'));
 // API routes for creating/updating pages
 app.use('/api', require('./src/routes/api'));
 
+// User profile routes
+app.use('/', require('./src/routes/users'));
+
+// Page routes
+app.use('/', require('./src/routes/pages'));
+
 // User page routes (must be last)
 app.use('/', require('./src/routes/userPages'));
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).render('error', { 
+    message: 'Something broke!',
+    error: err,
+    title: 'Error'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).render('404', { 
+    message: "The page you're looking for doesn't exist.",
+    title: 'Page Not Found'
+  });
+});
 
 const startServer = async () => {
   try {

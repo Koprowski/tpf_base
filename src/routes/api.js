@@ -1,38 +1,40 @@
 // src/routes/api.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const Page = require('../models/Page');
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
   }
-  res.redirect('/auth/google');
+  res.status(401).json({ error: 'Unauthorized' });
 };
+
+// Get user's pages
+router.get('/pages', isAuthenticated, async (req, res) => {
+  try {
+    const pages = await Page.find({ author: req.user._id })
+      .sort({ createdAt: -1 });
+    res.json(pages);
+  } catch (error) {
+    console.error('Error fetching pages:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // Create new page
 router.post('/pages/create', isAuthenticated, async (req, res) => {
   try {
-    console.log('Creating new page:', req.body);
-    const { pageName, content } = req.body;
-    const user = await User.findById(req.user._id);
+    const { title, content } = req.body;
     
-    // Check if page already exists
-    const pageExists = user.pages.some(p => p.pageName === pageName);
-    if (pageExists) {
-      return res.status(400).render('error', {
-        message: 'A page with this name already exists',
-        error: { message: 'Please choose a different page name' }
-      });
-    }
-
-    // Add the new page
-    user.pages.push({ pageName, content });
-    await user.save();
+    const page = await Page.create({
+      title,
+      content,
+      author: req.user._id
+    });
     
-    // Redirect to the new page
-    res.redirect(`/${user.username}/${encodeURIComponent(pageName)}`);
+    res.redirect(`/${req.user.username}/${page.urlId}`);
   } catch (error) {
     console.error('Error creating page:', error);
     res.status(500).render('error', { 
@@ -42,27 +44,47 @@ router.post('/pages/create', isAuthenticated, async (req, res) => {
   }
 });
 
-// Update existing page
-router.post('/pages/update/:pagename', isAuthenticated, async (req, res) => {
+// Update page
+router.post('/pages/update/:urlId', isAuthenticated, async (req, res) => {
   try {
-    console.log('Updating page:', req.params.pagename);
-    const { content } = req.body;
-    const user = await User.findById(req.user._id);
-    const page = user.pages.find(p => p.pageName === decodeURIComponent(req.params.pagename));
+    const { content, title } = req.body;
+    
+    const page = await Page.findOneAndUpdate(
+      { urlId: req.params.urlId, author: req.user._id },
+      { $set: { content, title } },
+      { new: true }
+    );
     
     if (!page) {
-      return res.status(404).render('404', { message: 'Page not found' });
+      return res.status(404).json({ error: 'Page not found' });
     }
     
-    page.content = content;
-    await user.save();
-    res.redirect(`/${user.username}/${encodeURIComponent(req.params.pagename)}`);
+    res.redirect(`/${req.user.username}/${page.urlId}`);
   } catch (error) {
     console.error('Error updating page:', error);
     res.status(500).render('error', { 
       message: 'Error updating page', 
       error: error 
     });
+  }
+});
+
+// Delete page
+router.delete('/pages/:urlId', isAuthenticated, async (req, res) => {
+  try {
+    const page = await Page.findOneAndDelete({
+      urlId: req.params.urlId,
+      author: req.user._id
+    });
+    
+    if (!page) {
+      return res.status(404).json({ error: 'Page not found' });
+    }
+    
+    res.json({ message: 'Page deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting page:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

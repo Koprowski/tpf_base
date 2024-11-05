@@ -39,4 +39,31 @@ router.get('/:username/:urlId', async (req, res) => {
   }
 });
 
+// List user's public pages
+router.get('/:username', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    
+    if (!user) {
+      return res.status(404).render('404', { message: 'User not found' });
+    }
+    
+    const pages = await Page.find({ author: user._id })
+      .sort({ createdAt: -1 });
+    
+    res.render('pages/public-list', {
+      pages,
+      pageOwner: user,
+      currentUser: req.user,
+      title: `${user.username}'s Pages`
+    });
+  } catch (error) {
+    console.error('Error listing user pages:', error);
+    res.status(500).render('error', { 
+      message: 'Error listing pages', 
+      error: error 
+    });
+  }
+});
+
 module.exports = router;
