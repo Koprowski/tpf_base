@@ -12,26 +12,6 @@ const isAuthenticated = (req, res, next) => {
   res.redirect('/auth/google');
 };
 
-// List pages
-router.get('/pages', isAuthenticated, async (req, res) => {
-  try {
-    const pages = await Page.find({ author: req.user._id })
-      .sort({ createdAt: -1 });
-    
-    res.render('pages/list', { 
-      user: req.user, 
-      pages,
-      title: 'My Pages'
-    });
-  } catch (error) {
-    console.error('Error listing pages:', error);
-    res.status(500).render('error', { 
-      message: 'Error listing pages', 
-      error: error 
-    });
-  }
-});
-
 // Create new page
 router.post('/pages/create', isAuthenticated, async (req, res) => {
   try {
@@ -64,15 +44,7 @@ router.post('/pages/create', isAuthenticated, async (req, res) => {
   }
 });
 
-// Show page creation form
-router.get('/pages/new', isAuthenticated, (req, res) => {
-  res.render('pages/new', { 
-    user: req.user,
-    title: 'Create New Page'
-  });
-});
-
-// Edit page form
+// Show edit form
 router.get('/pages/edit/:urlId', isAuthenticated, async (req, res) => {
   try {
     const page = await Page.findOne({
@@ -81,7 +53,10 @@ router.get('/pages/edit/:urlId', isAuthenticated, async (req, res) => {
     });
     
     if (!page) {
-      return res.status(404).render('404', { message: 'Page not found' });
+      return res.status(404).render('404', { 
+        message: 'Page not found',
+        title: 'Page Not Found'
+      });
     }
     
     res.render('pages/edit', {
@@ -111,7 +86,10 @@ router.post('/pages/update/:urlId', isAuthenticated, async (req, res) => {
     );
     
     if (!page) {
-      return res.status(404).render('404', { message: 'Page not found' });
+      return res.status(404).render('404', { 
+        message: 'Page not found',
+        title: 'Page Not Found'
+      });
     }
     
     res.redirect(`/${req.user.username}/${page.urlId}`);
