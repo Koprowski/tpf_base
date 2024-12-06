@@ -3,11 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= typeof title !== 'undefined' ? title + ' - TPF Base' : 'TPF Base' %></title>
+    <title><%= typeof title !== 'undefined' ? title + ' - The Progress Formula' : 'The Progress Formula' %></title>
+    <link rel="icon" href="/public/content/images/favicon.ico" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/grid.css">
     
-    <!-- Tailwind Typography Plugin for better content styling -->
+    <!-- Ionicons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+    <!-- Tailwind Typography Plugin -->
     <script>
         tailwind.config = {
             theme: {
@@ -61,18 +67,15 @@
 
     <!-- Custom Styles -->
     <style>
-        /* Smooth scrolling */
         html {
             scroll-behavior: smooth;
         }
 
-        /* Better focus outline */
         *:focus {
             outline: 2px solid #3b82f6;
             outline-offset: 2px;
         }
 
-        /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -90,26 +93,47 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #666;
         }
+
+        .fixed-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            padding-top: 64px;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <!-- Navigation -->
-    <nav class="bg-white shadow">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav class="fixed-nav">
+        <div class="max-w-7xl mx-auto px-2 sm:px-2 lg:px-4">
             <div class="flex justify-between h-16">
                 <div class="flex">
-                    <!-- Logo -->
-                    <div class="flex-shrink-0 flex items-center">
-                        <a href="/" class="text-xl font-bold text-blue-600">TPF Base</a>
+                    <!--Logo -->
+                    <div class="flex-shrink-0 flex items-center p-[1px]">
+                        <a href="/" class="nav-logo">
+                            <img src="/public/content/images/tpf_square.png" alt="The Progress Formula Logo" class="h-[62px] w-[62px]">
+                        </a>
                     </div>
                     
                     <!-- Navigation Links -->
-                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                    <div class="hidden sm:ml-6 sm:flex sm:gap-4">
                         <a href="/" class="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-blue-600">Home</a>
                         <% if (typeof user !== 'undefined' && user) { %>
                             <a href="/dashboard" class="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-blue-600">Dashboard</a>
                         <% } %>
                     </div>
+                </div>
+
+                <!-- Center title -->
+                <div class="flex-1 flex justify-center items-center" style="margin-left: -60px;">
+                    <h1 class="header-title">The Progress Formula</h1>
                 </div>
 
                 <!-- Right side -->
@@ -137,29 +161,18 @@
                 </div>
             </div>
         </div>
-
-        <!-- Mobile menu -->
-        <div class="sm:hidden">
-            <div class="pt-2 pb-3 space-y-1">
-                <a href="/" class="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Home</a>
-                <% if (typeof user !== 'undefined' && user) { %>
-                    <a href="/dashboard" class="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Dashboard</a>
-                    <a href="/profile" class="block pl-3 pr-4 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Profile</a>
-                <% } %>
-            </div>
-        </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="py-10 px-4 sm:px-6 lg:px-8">
-        <%- body %>
+    <main class="py-1 px-4 sm:px-4 lg:px-4">
+        <%- typeof body !== 'undefined' ? body : '' %>
     </main>
 
     <!-- Footer -->
     <footer class="bg-white shadow mt-auto">
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto py-2 px-4 sm:px-6 lg:px-8">
             <p class="text-center text-gray-500 text-sm">
-                TPF Base &copy; <%= new Date().getFullYear() %>
+                The Progress Formula &copy; <%= new Date().getFullYear() %>
             </p>
         </div>
     </footer>

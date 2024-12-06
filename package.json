@@ -1,31 +1,36 @@
 {
-  "name": "tpf_base",
+  "name": "tpf-base",
   "version": "1.0.0",
-  "description": "Testing base capability of Google sign-in with username setup and sub-page creation, editing, and access.",
+  "description": "Growth Canvas Application with Authentication",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
+    "build": "webpack",
+    "watch": "webpack --watch",
     "dev": "nodemon app.js"
   },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "connect-flash": "^0.1.1",
-    "connect-mongo": "^5.1.0",
-    "dotenv": "^16.4.5",
-    "ejs": "^3.1.10",
-    "express": "^4.21.1",
+    "connect-mongo": "^5.0.0",
+    "dotenv": "^16.0.3",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
     "express-ejs-layouts": "^2.5.1",
-    "express-session": "^1.18.1",
-    "mongoose": "^8.8.0",
-    "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "express-session": "^1.17.3",
+    "mongoose": "^7.0.3",
+    "passport": "^0.6.0",
+    "passport-google-oauth20": "^2.0.0",
+    "shortid": "^2.2.16"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "@types/node": "^20.10.5",
+    "nodemon": "^2.0.22",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.6.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }

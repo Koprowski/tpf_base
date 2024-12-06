@@ -8,21 +8,37 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const expressLayouts = require('express-ejs-layouts');
 const flash = require('connect-flash');
+const path = require('path');
 const User = require('./src/models/User');
 const Page = require('./src/models/Page');
-const userRoutes = require('./src/routes/users.js'); // Updated with .js extension
+const userRoutes = require('./src/routes/users.js');
 const authRoutes = require('./src/routes/auth');
 const apiRoutes = require('./src/routes/api');
 const pageRoutes = require('./src/routes/pages');
 const userPageRoutes = require('./src/routes/userPages');
+const dotsApiRoutes = require('./src/routes/dotsApi');
 
 const app = express();
-const RENDER_EXTERNAL_URL = 'https://tpf-base.onrender.com';
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const BASE_URL = isDevelopment ? 'http://localhost:3000' : 'https://tpf-base.onrender.com';
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Database connection with retry logic
+const connectDB = async (retries = 5) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await mongoose.connect(process.env.MONGODB_URI);
+      console.log('Connected to MongoDB');
+      return;
+    } catch (err) {
+      if (i === retries - 1) {
+        console.error('MongoDB connection failed after retries:', err);
+        process.exit(1);
+      }
+      console.log(`MongoDB connection attempt ${i + 1} failed, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
+    }
+  }
+};
 
 // Trust proxy - must be first
 app.set('trust proxy', 1);
@@ -30,12 +46,17 @@ app.set('trust proxy', 1);
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('src/public'));
+
+// Static file serving - Updated with absolute paths
+app.use('/public', express.static(path.join(__dirname, 'src', 'public')));
+app.use('/js', express.static(path.join(__dirname, 'src', 'public', 'js')));
+app.use('/css', express.static(path.join(__dirname, 'src', 'public', 'css')));
 
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', './src/views');
 app.use(expressLayouts);
+app.set('layout', './layout');
 
 // Session configuration - must be before passport
 app.use(session({
@@ -48,10 +69,10 @@ app.use(session({
     ttl: 60 * 60 * 24 * 7
   }),
   cookie: {
-    secure: true,
+    secure: !isDevelopment,
     httpOnly: true,
-    sameSite: 'none',
-    maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
+    sameSite: isDevelopment ? 'lax' : 'none',
+    maxAge: 1000 * 60 * 60 * 24 * 7
   }
 }));
 
@@ -66,7 +87,7 @@ app.use(passport.session());
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${RENDER_EXTERNAL_URL}/auth/google/callback`
+    callbackURL: `${BASE_URL}/auth/google/callback`
   },
   async function(accessToken, refreshToken, profile, cb) {
     try {
@@ -115,11 +136,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add middleware to make static file paths available to all views
+app.use((req, res, next) => {
+  res.locals.publicPath = '/public';
+  next();
+});
+
 // Basic routes
 app.get('/', (req, res) => {
   res.render('index', { 
     user: req.user,
-    title: 'Welcome to TPF Base'
+    title: 'Welcome to TPF Base',
+    layout: './layout'
   });
 });
 
@@ -135,13 +163,15 @@ app.get('/dashboard', async (req, res) => {
     res.render('dashboard', { 
       user: req.user, 
       pages,
-      title: 'Dashboard'
+      title: 'Dashboard',
+      layout: './layout'
     });
   } catch (error) {
     console.error('Error fetching pages:', error);
     res.status(500).render('error', { 
       message: 'Error loading dashboard', 
-      error: error 
+      error: error,
+      layout: './layout'
     });
   }
 });
@@ -149,6 +179,7 @@ app.get('/dashboard', async (req, res) => {
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api', apiRoutes);
+app.use('/api', dotsApiRoutes);
 app.use('/', userRoutes);
 app.use('/', pageRoutes);
 app.use('/', userPageRoutes);
@@ -159,7 +190,8 @@ app.use((err, req, res, next) => {
   res.status(500).render('error', { 
     message: 'Something broke!',
     error: err,
-    title: 'Error'
+    title: 'Error',
+    layout: './layout'
   });
 });
 
@@ -167,24 +199,81 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   res.status(404).render('404', { 
     message: "The page you're looking for doesn't exist.",
-    title: 'Page Not Found'
+    title: 'Page Not Found',
+    layout: './layout'
   });
 });
 
+// Function to find an available port
+const findAvailablePort = async (startPort, maxPort = startPort + 10) => {
+  for (let port = startPort; port <= maxPort; port++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const server = require('net').createServer()
+          .listen(port)
+          .on('listening', () => {
+            server.close();
+            resolve(port);
+          })
+          .on('error', reject);
+      });
+      return port;
+    } catch (err) {
+      if (port === maxPort) throw new Error('No available ports found');
+    }
+  }
+  throw new Error('No available ports found');
+};
+
+// Improved server start function with graceful shutdown
 const startServer = async () => {
   try {
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
+    await connectDB();
+    
+    const desiredPort = process.env.PORT || 3000;
+    const port = await findAvailablePort(desiredPort);
+    
+    const server = app.listen(port, () => {
       console.log(`
 ====================================
-🚀 Server is running on port ${PORT}
-📁 View the app at ${RENDER_EXTERNAL_URL}
+🚀 Server is running on port ${port}
+📁 View the app at ${BASE_URL}
 ====================================
       `);
-    }).on('error', (err) => {
-      console.error('Server error:', err);
-      process.exit(1);
     });
+
+    // Graceful shutdown handlers
+    const shutdown = async () => {
+      console.log('\nShutting down gracefully...');
+      server.close(async () => {
+        console.log('Closed remaining connections.');
+        await mongoose.connection.close();
+        console.log('Database connections closed.');
+        process.exit(0);
+      });
+
+      // Force close after 10 seconds
+      setTimeout(() => {
+        console.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+      }, 10000);
+    };
+
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+    
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (error) => {
+      console.error('Uncaught Exception:', error);
+      shutdown();
+    });
+
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      shutdown();
+    });
+
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

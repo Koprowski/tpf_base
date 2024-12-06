@@ -13,7 +13,7 @@
     </div>
 
     <!-- Messages -->
-    <% if (typeof message !== 'undefined' && message) { %>
+    <% if (typeof message === 'string' && message.length > 0) { %>
         <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -26,7 +26,7 @@
         </div>
     <% } %>
 
-    <% if (typeof error !== 'undefined' && error) { %>
+    <% if (typeof error === 'string' && error.length > 0) { %>
         <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -48,11 +48,10 @@
                 <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
                 <div class="mt-1 relative rounded-md shadow-sm">
                     <input type="text" name="username" id="username"
-                        class="block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        class="editable-username-field block w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         value="<%= user.username %>"
                         minlength="3"
                         maxlength="30"
-                        pattern="[A-Za-z0-9_-]+"
                         title="Username can only contain letters, numbers, underscores, and hyphens"
                         required>
                 </div>

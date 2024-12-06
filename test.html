@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coordinate System Test</title>
+    <link rel="stylesheet" href="/src/public/css/grid.css">
+    <style>
+        #xy-plane {
+            width: 400px;
+            height: 400px;
+            border: 1px solid black;
+            position: relative;
+            margin: 50px auto;
+        }
+        .test-results {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .debug-log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .test-point {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: blue;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .x-axis, .y-axis {
+            background-color: black;
+            position: absolute;
+        }
+        .x-axis {
+            width: 100%;
+            height: 1px;
+            top: 50%;
+        }
+        .y-axis {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f8f8;
+        }
+    </style>
+</head>
+<body>
+    <div id="xy-plane"></div>
+    <div id="test-results" class="test-results">Loading tests...</div>
+    <div id="debug-log" class="debug-log"></div>
+
+    <script>
+        function debugLog(message) {
+            const log = document.getElementById('debug-log');
+            const timestamp = new Date().toISOString();
+            const logMessage = `${timestamp} - ${message}`;
+            log.innerHTML += logMessage + '\n';
+            console.log(logMessage);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        window.addEventListener('error', function(e) {
+            debugLog(`ERROR: ${e.message}\nSource: ${e.filename}\nLine: ${e.lineno}`);
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            debugLog(`PROMISE ERROR: ${e.reason}`);
+        });
+    </script>
+
+    <script type="module">
+        debugLog('Starting module imports...');
+        
+        try {
+            debugLog('Attempting to import test bundle...');
+            const { createTickMarks, pixelToCoordinate, coordinateToPixel, testConversion } = 
+                await import('/src/public/js/test.bundle.js');
+            
+            debugLog('Test bundle imported successfully');
+
+            function runTests() {
+                debugLog('Starting tests...');
+                try {
+                    const xyPlane = document.getElementById('xy-plane');
+                    if (!xyPlane) {
+                        throw new Error('xy-plane element not found');
+                    }
+                    debugLog('Found xy-plane element');
+
+                    // Add basic axes first
+                    const xAxis = document.createElement('div');
+                    xAxis.className = 'x-axis';
+                    const yAxis = document.createElement('div');
+                    yAxis.className = 'y-axis';
+                    xyPlane.appendChild(xAxis);
+                    xyPlane.appendChild(yAxis);
+
+                    debugLog('Calling createTickMarks...');
+                    createTickMarks(xyPlane);
+                    debugLog('Tick marks created');
+
+                    const testPoints = [
+                        { x: 1, y: 1 },
+                        { x: -1, y: -1 },
+                        { x: 0, y: 0 },
+                        { x: 5, y: 5 },
+                        { x: -5, y: -5 }
+                    ];
+
+                    debugLog('Testing coordinate conversions...');
+                    const results = testPoints.map(point => {
+                        const result = testConversion(point.x, point.y);
+                        debugLog(`Full conversion test for (${point.x}, ${point.y}):`);
+                        debugLog(`  Pixels: (${result.pixels.x}, ${result.pixels.y})`);
+                        debugLog(`  Back to coords: (${result.converted.x}, ${result.converted.y})`);
+
+                        const testPoint = document.createElement('div');
+                        testPoint.className = 'test-point';
+                        testPoint.style.left = `${result.pixels.x}px`;
+                        testPoint.style.top = `${result.pixels.y}px`;
+                        xyPlane.appendChild(testPoint);
+
+                        return result;
+                    });
+
+                    // Display results in a table
+                    document.getElementById('test-results').innerHTML = `
+                        <h2>Coordinate System Test Results</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Original Point</th>
+                                    <th>Pixel Position</th>
+                                    <th>Converted Back</th>
+                                    <th>Accurate?</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${results.map(r => {
+                                    const accurate = Math.abs(r.original.x - r.converted.x) < 0.1 && 
+                                                   Math.abs(r.original.y - r.converted.y) < 0.1;
+                                    return `
+                                        <tr>
+                                            <td>(${r.original.x}, ${r.original.y})</td>
+                                            <td>(${Math.round(r.pixels.x)}, ${Math.round(r.pixels.y)})</td>
+                                            <td>(${r.converted.x}, ${r.converted.y})</td>
+                                            <td style="color: ${accurate ? 'green' : 'red'}">
+                                                ${accurate ? '✓' : '✗'}
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    debugLog('Tests completed');
+
+                } catch (error) {
+                    debugLog(`Test error: ${error.message}\n${error.stack}`);
+                    document.getElementById('test-results').innerHTML = `Error: ${error.message}`;
+                }
+            }
+
+            // Run tests after a short delay to ensure DOM is ready
+            setTimeout(runTests, 100);
+
+        } catch (error) {
+            debugLog(`Module loading error: ${error.message}\n${error.stack}`);
+            document.getElementById('test-results').innerHTML = `Module Error: ${error.message}`;
+        }
+    </script>
+</body>
+</html>

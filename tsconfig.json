@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "es6",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./src/public/js",
+    "rootDir": "./src/public/ts",
+    "moduleResolution": "node",
+    "lib": ["dom", "es6", "dom.iterable", "scripthost"]
+  },
+  "include": ["src/public/ts/**/*"],
+  "exclude": ["node_modules"]
+}

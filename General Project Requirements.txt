@@ -1,0 +1,6 @@
+General Project Requirements
+	1. When making updates to functions, if the update is more than 1 line, please provide updated code for the entire function
+	2. If providing updates to code in a non-contiguous manner within a single file, separate each continuous section into its own artifact and denote in the chat preceding the artifact which file it is for
+	3. Do not combine code updates for multiple files into a single artifact ever
+	4. When providing updated functions, please always perform a check to ensure that recommended code change make sense from a file-size perspective (for example, if adding capabilities then check to make sure that the new file size is larger than original and vice-versa)
+	
