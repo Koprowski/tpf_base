@@ -7,6 +7,7 @@ import { mouseDown, mouseUp, mouseMove } from './mouseEvents';
 import { removeAnyExistingElementsWithClassName } from './removeAnyExistingElementsWithClassName';
 import log from './util.log';
 import { initErrorTracker } from './errorTracker';
+import './navScroll';
 
 // Extend Window interface to include our global functions
 declare global {

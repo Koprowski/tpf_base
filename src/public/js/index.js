@@ -43,6 +43,7 @@ import { mouseDown, mouseUp, mouseMove } from './mouseEvents';
 import { removeAnyExistingElementsWithClassName } from './removeAnyExistingElementsWithClassName';
 import log from './util.log';
 import { initErrorTracker } from './errorTracker';
+import './navScroll';
 // Export everything that needs to be globally available
 window.createTickMarks = createTickMarks;
 window.pixelToCoordinate = pixelToCoordinate;

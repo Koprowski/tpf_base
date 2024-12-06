@@ -6,7 +6,7 @@ const ENABLED_CATEGORIES: LogCategory[] = [
     'mouse',
     'keyboard',
     'debug',
-    'general',
+    //'general',
     'dots'  // Enable all categories for debugging
 ];
 

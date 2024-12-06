@@ -12,7 +12,7 @@ var ENABLED_CATEGORIES = [
     'mouse',
     'keyboard',
     'debug',
-    'general',
+    //'general',
     'dots' // Enable all categories for debugging
 ];
 export default function log(message, category) {
