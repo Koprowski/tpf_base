@@ -14,9 +14,10 @@
                 <!-- Action Links -->
                 <div class="action-links">
                     <a href="#" id="saveTitleLink" class="text-gray-400 hover:text-blue-600 transition-colors duration-200 hidden" title="Save Changes">
-                        <ion-icon name="save-outline" class="w-5 h-5"></ion-icon>
+                        <ion-icon name="save-outline" size="20"></ion-icon>
                     </a>
                 </div>
+
             </div>
             <!-- Header Line -->
             <div class="header-line"></div>
@@ -72,58 +73,62 @@
 </div>
 
 <script>
+
+function showSaveButton() {
+    const saveLink = document.getElementById('saveTitleLink');
+    console.log('Attempting to show save button', { saveLink, hasChanges });
+    if (saveLink) {
+        saveLink.classList.remove('hidden');
+        hasChanges = true;
+        console.log('Save button shown');
+    }
+}
+
+let hasChanges = false;
+
 document.addEventListener('DOMContentLoaded', function() {
     const titleElement = document.getElementById('page-title');
     const saveLink = document.getElementById('saveTitleLink');
     const xyPlane = document.getElementById('xy-plane');
     let originalTitle = 'Untitled';
-    let hasChanges = false;
-
-    function showSaveButton() {
-        saveLink.classList.remove('hidden');
-    }
-
+    
     function hideSaveButton() {
         saveLink.classList.add('hidden');
     }
 
-    // Get all dots data with proper coordinate calculation
     function getAllDots() {
         const dots = [];
         const dotElements = document.querySelectorAll('.dot-container');
+        const xyPlane = document.getElementById('xy-plane');
+        
+        if (!xyPlane) return dots;
+        
         const xyPlaneRect = xyPlane.getBoundingClientRect();
         
-        dotElements.forEach(dotContainer => {
-            const dotRect = dotContainer.getBoundingClientRect();
+        dotElements.forEach((container) => {
+            const dotEl = container;
+            const labelEl = dotEl.querySelector('.user-dot-label');
+            const coordsEl = dotEl.querySelector('.dot-coordinates');
             
-            // Calculate relative position from center of grid
-            const centerX = xyPlaneRect.width / 2;
-            const centerY = xyPlaneRect.height / 2;
+            // Get absolute pixel positions
+            const left = parseFloat(dotEl.style.left);
+            const top = parseFloat(dotEl.style.top);
             
-            // Get dot's position relative to the xy-plane
-            const relativeLeft = parseFloat(dotContainer.style.left) || 0;
-            const relativeTop = parseFloat(dotContainer.style.top) || 0;
-            
-            // Convert to grid coordinates (-5 to 5 scale)
-            const x = ((relativeLeft - centerX) / (xyPlaneRect.width / 10)).toFixed(1);
-            const y = ((centerY - relativeTop) / (xyPlaneRect.height / 10)).toFixed(1);
-
-            const labelElement = dotContainer.querySelector('.user-dot-label');
-            const coordsElement = dotContainer.querySelector('.dot-coordinates');
-
+            // Keep original pixel positions
             const dot = {
-                x: parseFloat(x),
-                y: parseFloat(y),
-                label: labelElement ? labelElement.textContent : '',
-                coordinates: coordsElement ? coordsElement.textContent : `(${x}, ${y})`,
-                position: {
-                    left: relativeLeft,
-                    top: relativeTop
+                x: `${left}px`,
+                y: `${top}px`,
+                coordinates: coordsEl?.textContent || '',
+                label: labelEl?.textContent || '',
+                labelOffset: {
+                    x: 50,
+                    y: -50
                 }
             };
+            
             dots.push(dot);
         });
-
+        
         return dots;
     }
 
@@ -176,7 +181,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Title editing events
         titleElement.addEventListener('input', function() {
-            if (this.textContent.trim() !== originalTitle) {
+            const currentTitle = this.textContent.trim();
+            if (currentTitle !== 'Untitled' && currentTitle !== originalTitle) {
                 showSaveButton();
             }
         });
@@ -194,13 +200,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Monitor grid changes
+
         const observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList') {
+                if (mutation.type === 'childList' && 
+                    (mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0)) {
                     const dots = getAllDots();
                     if (dots.length > 0) {
                         showSaveButton();
                     }
+                } else if (mutation.type === 'attributes' && 
+                        mutation.target instanceof Element &&
+                        mutation.target.classList.contains('dot-container')) {
+                    showSaveButton();
                 }
             });
         });
@@ -208,14 +220,13 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(xyPlane, { 
             childList: true, 
             subtree: true,
-            attributes: true, 
-            characterData: true 
+            attributes: true,
+            attributeFilter: ['style', 'data-line-length', 'data-line-angle']
         });
 
         // Listen for custom events from the dots system
-        xyPlane.addEventListener('dotChanged', showSaveButton);
-        xyPlane.addEventListener('dotAdded', showSaveButton);
-        xyPlane.addEventListener('dotRemoved', function() {
+        document.addEventListener('dotCreated', showSaveButton);
+        document.addEventListener('dotDeleted', () => {
             const dots = getAllDots();
             if (dots.length === 0) {
                 hideSaveButton();
