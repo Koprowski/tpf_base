@@ -3,65 +3,59 @@ var NavigationScroller = /** @class */ (function () {
     function NavigationScroller() {
         var _this = this;
         this.handleScroll = function () {
-            var _a = _this.elements, nav = _a.nav, body = _a.body, pageHeader = _a.pageHeader;
-            if (!nav || !pageHeader)
+            if (!_this.nav || !_this.pageHeader)
                 return;
-            var currentScroll = window.scrollY;
-            var scrollingDown = currentScroll > _this.state.lastScrollTop;
-            var pastNavHeight = currentScroll > NavigationScroller.NAV_HEIGHT;
-            if (scrollingDown && pastNavHeight) {
-                // Scrolling down - hide nav
-                nav.style.transform = "translateY(-".concat(NavigationScroller.NAV_HEIGHT, "px)");
-                pageHeader.style.transform = "translateY(-".concat(NavigationScroller.NAV_HEIGHT, "px)");
-                pageHeader.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+            var scrollTop = window.scrollY;
+            var headerRect = _this.pageHeader.getBoundingClientRect();
+            var maxScroll = NavigationScroller.NAV_HEIGHT;
+            if (scrollTop > 0) {
+                // Move nav bar up
+                var navTransform = Math.min(scrollTop, maxScroll);
+                _this.nav.style.transform = "translateY(-".concat(navTransform, "px)");
+                // Add sticky class when header reaches top
+                if (headerRect.top <= 0) {
+                    _this.pageHeader.classList.add('sticky');
+                }
             }
             else {
-                // Scrolling up - show nav
-                nav.style.transform = 'translateY(0)';
-                pageHeader.style.transform = 'translateY(0)';
-                pageHeader.style.boxShadow = 'none';
+                // Reset nav position and remove sticky class
+                _this.nav.style.transform = 'translateY(0)';
+                _this.pageHeader.classList.remove('sticky');
             }
-            // Update last scroll position
-            _this.state.lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
+            _this.state.lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
         };
         this.state = {
             lastScrollTop: 0,
             ticking: false
         };
-        this.elements = {
-            nav: document.querySelector('.fixed-nav'),
-            body: document.body,
-            pageHeader: document.querySelector('.page-header-container')
-        };
-        this.initialize();
+        this.nav = document.querySelector('.fixed-nav');
+        this.pageHeader = document.querySelector('.page-header-container');
+        if (this.nav && this.pageHeader) {
+            this.initialize();
+        }
     }
     NavigationScroller.prototype.initialize = function () {
-        if (!this.validateElements()) {
-            console.warn('Required elements not found for navigation scroll behavior');
-            return;
+        // Set up nav bar
+        if (this.nav) {
+            this.nav.style.position = 'fixed';
+            this.nav.style.top = '0';
+            this.nav.style.left = '0';
+            this.nav.style.right = '0';
+            this.nav.style.zIndex = '999';
+            this.nav.style.transition = 'transform 0.2s ease-out';
         }
-        this.setupInitialStyles();
+        // Set up page header
+        if (this.pageHeader) {
+            this.pageHeader.style.position = 'sticky';
+            this.pageHeader.style.top = '0';
+            this.pageHeader.style.zIndex = '1000';
+            this.pageHeader.style.background = 'white';
+            this.pageHeader.style.transition = 'height 0.2s ease-out';
+        }
         this.attachEventListeners();
-    };
-    NavigationScroller.prototype.validateElements = function () {
-        return !!(this.elements.nav && this.elements.pageHeader);
-    };
-    NavigationScroller.prototype.setupInitialStyles = function () {
-        var _a = this.elements, nav = _a.nav, pageHeader = _a.pageHeader;
-        if (!nav || !pageHeader)
-            return;
-        // Set initial transition states for smooth movement
-        nav.style.transition = 'transform 0.2s ease-out';
-        pageHeader.style.transition = 'transform 0.2s ease-out, box-shadow 0.2s ease-out';
-        // Initialize page header position
-        pageHeader.style.position = 'sticky';
-        pageHeader.style.top = "".concat(NavigationScroller.NAV_HEIGHT, "px");
-        pageHeader.style.backgroundColor = 'white';
-        pageHeader.style.zIndex = '40';
     };
     NavigationScroller.prototype.attachEventListeners = function () {
         var _this = this;
-        // Throttled scroll handler
         window.addEventListener('scroll', function () {
             if (!_this.state.ticking) {
                 window.requestAnimationFrame(function () {
@@ -69,17 +63,6 @@ var NavigationScroller = /** @class */ (function () {
                     _this.state.ticking = false;
                 });
                 _this.state.ticking = true;
-            }
-        });
-        // Reset positions on page load/refresh
-        window.addEventListener('pageshow', function () {
-            if (window.scrollY === 0) {
-                var _a = _this.elements, nav = _a.nav, pageHeader = _a.pageHeader;
-                if (nav && pageHeader) {
-                    nav.style.transform = 'translateY(0)';
-                    pageHeader.style.transform = 'translateY(0)';
-                    pageHeader.style.boxShadow = 'none';
-                }
             }
         });
     };

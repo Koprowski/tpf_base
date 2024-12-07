@@ -7,16 +7,41 @@
 }
 
 /* Header container styles */
+
+/* Initial header state */
 .page-header-container {
     position: relative;
-    width: calc(100% + 3rem); /*+3rem to extend the width of parent div */
+    width: calc(100% + 3rem);
     height: 3rem;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    margin: -2.5rem 0 2.25rem -1.5rem; /*-1.5rem is half of the increase in width above */
+    margin: -2.5rem 0 2.25rem -1.5rem;
     border-bottom: 1px solid #E5E7EB;
+    background: white;
+}
+
+/* Sticky state styles */
+.page-header-container:has(> *) {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* When header becomes sticky */
+.page-header-container.sticky,
+.page-header-container:has(> *[style*="position: sticky"]) {
+    height: 2rem;
+}
+
+.fixed-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: white;
 }
 
 /* Title styles */
