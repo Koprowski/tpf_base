@@ -488,6 +488,8 @@ function xyPlaneClickHandler(event) {
         x: adjustedPosition.x + 'px',
         y: adjustedPosition.y + 'px',
         coordinates: "(".concat(graphCoords.x.toFixed(2), ", ").concat(graphCoords.y.toFixed(2), ")"),
+        // For display purposes, we'll format this differently when rendering
+        displayCoordinates: "(".concat(graphCoords.x.toFixed(1), ", ").concat(graphCoords.y.toFixed(1), ")"),
         label: '',
         id: dotId,
         labelOffset: {

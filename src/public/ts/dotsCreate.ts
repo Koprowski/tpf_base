@@ -523,6 +523,8 @@ function xyPlaneClickHandler(event: MouseEvent) {
         x: adjustedPosition.x + 'px',
         y: adjustedPosition.y + 'px',
         coordinates: `(${graphCoords.x.toFixed(2)}, ${graphCoords.y.toFixed(2)})`,
+        // For display purposes, we'll format this differently when rendering
+        displayCoordinates: `(${graphCoords.x.toFixed(1)}, ${graphCoords.y.toFixed(1)})`,
         label: '',
         id: dotId,
         labelOffset: {

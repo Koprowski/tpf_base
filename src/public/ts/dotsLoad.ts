@@ -1,5 +1,4 @@
 import { mouseDown, mouseUp, mouseMove } from './mouseEvents';
-//import { coordinateToPixel, pixelToCoordinate } from './createTickMarks';
 import { tpf } from './data';
 import log from "./util.log";
 import { DOT_BOX, LABEL_CONNECTION } from './constants';
@@ -9,6 +8,7 @@ import { SavedDot } from './types';
 import { createLabelEditor } from './dotsCreate';
 import { DEBUG } from './constants';
 import { debounce } from './keyboardUtils';
+import { formatCoordinateDisplay } from './createTickMarks'; 
 
 function loadSavedDots(savedDot: SavedDot): HTMLDivElement {
     const dot = document.createElement('div') as HTMLDivElement;
@@ -112,7 +112,7 @@ function loadSavedDots(savedDot: SavedDot): HTMLDivElement {
 
         labelContainer.innerHTML = `
             <div class='user-dot-label'>${savedDot.label || ''}</div>
-            <div class='dot-coordinates'>${savedDot.coordinates}</div>
+            <div class='dot-coordinates'>${savedDot.displayCoordinates || formatCoordinateDisplay(gridX, gridY)}</div>
         `;
 
         // Verify label elements

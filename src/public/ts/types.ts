@@ -2,6 +2,7 @@ export interface SavedDot {
     x: string;
     y: string;
     coordinates: string;
+    displayCoordinates?: string;
     label: string;
     id?: string;
     labelOffset?: {

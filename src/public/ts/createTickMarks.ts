@@ -61,7 +61,11 @@ export function pixelToCoordinate(pixel: number): number {
 }
 
 export function formatCoordinateDisplay(x: number, y: number): string {
-  return `(${Number(x).toFixed(2)}, ${Number(y).toFixed(2)})`;
+  // Round to nearest 0.1 for display only
+  const displayX = Math.round(x * 10) / 10;
+  const displayY = Math.round(y * 10) / 10;
+  return `(${displayX.toFixed(1)}, ${displayY.toFixed(1)})`;
+  //return `(${Number(x).toFixed(2)}, ${Number(y).toFixed(2)})`;
 }
 
 export function getPixelDeltaForCoordinate(coordinateStep: number): number {

@@ -44,7 +44,11 @@ export function pixelToCoordinate(pixel) {
     //return (pixel - PLANE_SIZE/2) / PIXELS_PER_UNIT;
 }
 export function formatCoordinateDisplay(x, y) {
-    return "(".concat(Number(x).toFixed(2), ", ").concat(Number(y).toFixed(2), ")");
+    // Round to nearest 0.1 for display only
+    var displayX = Math.round(x * 10) / 10;
+    var displayY = Math.round(y * 10) / 10;
+    return "(".concat(displayX.toFixed(1), ", ").concat(displayY.toFixed(1), ")");
+    //return `(${Number(x).toFixed(2)}, ${Number(y).toFixed(2)})`;
 }
 export function getPixelDeltaForCoordinate(coordinateStep) {
     // Remove rounding to maintain precise movement

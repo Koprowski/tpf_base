@@ -46,7 +46,6 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 import { mouseDown, mouseUp } from './mouseEvents';
-//import { coordinateToPixel, pixelToCoordinate } from './createTickMarks';
 import { tpf } from './data';
 import log from "./util.log";
 import { DOT_BOX, LABEL_CONNECTION } from './constants';
@@ -55,6 +54,7 @@ import { updateConnectingLine } from './utils';
 import { createLabelEditor } from './dotsCreate';
 import { DEBUG } from './constants';
 import { debounce } from './keyboardUtils';
+import { formatCoordinateDisplay } from './createTickMarks';
 function loadSavedDots(savedDot) {
     var _a;
     var dot = document.createElement('div');
@@ -139,7 +139,7 @@ function loadSavedDots(savedDot) {
             whiteSpace: 'nowrap',
             zIndex: '2'
         });
-        labelContainer_1.innerHTML = "\n            <div class='user-dot-label'>".concat(savedDot.label || '', "</div>\n            <div class='dot-coordinates'>").concat(savedDot.coordinates, "</div>\n        ");
+        labelContainer_1.innerHTML = "\n            <div class='user-dot-label'>".concat(savedDot.label || '', "</div>\n            <div class='dot-coordinates'>").concat(savedDot.displayCoordinates || formatCoordinateDisplay(gridX, gridY), "</div>\n        ");
         // Verify label elements
         if (!labelContainer_1.querySelector('.user-dot-label') ||
             !labelContainer_1.querySelector('.dot-coordinates')) {

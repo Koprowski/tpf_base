@@ -1,7 +1,8 @@
 export const PLANE_SIZE = 500;  // Total size of plane in pixels
 export const GRID_UNITS = 10;   // Number of grid units (-5 to +5)
 export const PIXELS_PER_UNIT = PLANE_SIZE / GRID_UNITS;  // 40px per unit
-export const COORDINATE_STEP = 0.02;  // Desired movement granularity
+export const COORDINATE_STEP = 0.1;  // Desired movement granularity
+
 export const TICK_COUNT = 11; // Number of tick marks on each axis
 export const MOUSE_UPDATE_INTERVAL = 16; // ~60fps
 export const DEBUG = false;

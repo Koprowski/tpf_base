@@ -156,7 +156,7 @@ const throttledMove = throttle((event: KeyboardEvent) => {
     // Update coordinates text with precise formatting
     const coordsElement = tpf.selectedDot.querySelector('.dot-coordinates');
     if (coordsElement) {
-        coordsElement.textContent = `(${currentGridX.toFixed(2)}, ${currentGridY.toFixed(2)})`;
+        coordsElement.textContent = `(${currentGridX.toFixed(1)}, ${currentGridY.toFixed(1)})`; //change here
     }
     
     // Update connecting line and hover box
@@ -201,7 +201,7 @@ const throttledMouseMove = throttle((event: MouseEvent) => {
         // Update coordinates text
         const coordsElement = tpf.currentDot.querySelector('.dot-coordinates');
         if (coordsElement) {
-            coordsElement.textContent = `(${normalizedX.toFixed(2)}, ${normalizedY.toFixed(2)})`;
+            coordsElement.textContent = `(${normalizedX.toFixed(1)}, ${normalizedY.toFixed(1)})`;
         }
 
         // Update line position

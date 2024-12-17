@@ -175,7 +175,7 @@ var throttledMove = throttle(function (event) {
     // Update coordinates text with precise formatting
     var coordsElement = tpf.selectedDot.querySelector('.dot-coordinates');
     if (coordsElement) {
-        coordsElement.textContent = "(".concat(currentGridX.toFixed(2), ", ").concat(currentGridY.toFixed(2), ")");
+        coordsElement.textContent = "(".concat(currentGridX.toFixed(1), ", ").concat(currentGridY.toFixed(1), ")"); //change here
     }
     // Update connecting line and hover box
     updateConnectingLine(tpf.selectedDot);
@@ -211,7 +211,7 @@ var throttledMouseMove = throttle(function (event) {
         // Update coordinates text
         var coordsElement = tpf.currentDot.querySelector('.dot-coordinates');
         if (coordsElement) {
-            coordsElement.textContent = "(".concat(normalizedX.toFixed(2), ", ").concat(normalizedY.toFixed(2), ")");
+            coordsElement.textContent = "(".concat(normalizedX.toFixed(1), ", ").concat(normalizedY.toFixed(1), ")");
         }
         // Update line position
         updateConnectingLine(tpf.currentDot);
