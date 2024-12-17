@@ -639,7 +639,10 @@ function createLabelEditor(labelElement: HTMLElement, dotContainer: HTMLDivEleme
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'label-input';
-    
+
+    // Pre-populate the input with the current label text
+    input.value = labelElement.textContent || '';
+
     const labelRect = labelElement.getBoundingClientRect();
     const containerRect = dotContainer.getBoundingClientRect();
     
@@ -651,6 +654,12 @@ function createLabelEditor(labelElement: HTMLElement, dotContainer: HTMLDivEleme
     
     labelElement.style.visibility = 'hidden';
     
+    // Use setTimeout to ensure cursor placement after focus
+    setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    }, 0);
+
     const finishEdit = async () => {
         if (isEscPressed) return;
         

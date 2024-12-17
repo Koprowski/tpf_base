@@ -587,6 +587,8 @@ function createLabelEditor(labelElement, dotContainer) {
     var input = document.createElement('input');
     input.type = 'text';
     input.className = 'label-input';
+    // Pre-populate the input with the current label text
+    input.value = labelElement.textContent || '';
     var labelRect = labelElement.getBoundingClientRect();
     var containerRect = dotContainer.getBoundingClientRect();
     input.style.top = (labelRect.top - containerRect.top) + 'px';
@@ -594,6 +596,11 @@ function createLabelEditor(labelElement, dotContainer) {
     var isEscPressed = false;
     var isFinishing = false;
     labelElement.style.visibility = 'hidden';
+    // Use setTimeout to ensure cursor placement after focus
+    setTimeout(function () {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    }, 0);
     var finishEdit = function () { return __awaiter(_this, void 0, void 0, function () {
         var previousLabel, newLabel, labelChangeEvent, urlParts, dots, error_1, error_2;
         return __generator(this, function (_a) {
