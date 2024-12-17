@@ -86,20 +86,115 @@ router.post('/pages/update/:urlId', isAuthenticated, async (req, res) => {
     );
     
     if (!page) {
-      return res.status(404).render('404', { 
-        message: 'Page not found',
-        title: 'Page Not Found'
+      return res.status(404).json({
+        success: false,
+        error: 'Page not found'
       });
     }
     
-    res.redirect(`/${req.user.username}/${page.urlId}`);
+    res.json({
+      success: true,
+      page: {
+        title: page.title,
+        urlId: page.urlId
+      }
+    });
   } catch (error) {
     console.error('Error updating page:', error);
-    res.status(500).render('error', { 
-      message: 'Error updating page', 
-      error: error 
+    res.status(500).json({
+      success: false,
+      error: 'Error updating page'
     });
   }
+});
+
+// Add this new route for updating page title/URL
+router.put('/api/pages/:urlId', isAuthenticated, async (req, res) => {
+  try {
+      console.log('Updating page details:', req.params.urlId);
+      console.log('Request body:', req.body);
+      const { url } = req.body;
+      
+      // Validate new URL exists
+      if (!url) {
+          return res.status(400).json({ 
+              success: false,
+              error: 'New URL is required' 
+          });
+      }
+
+      // Check if URL is already in use
+      const existingPage = await Page.findOne({
+          urlId: url,
+          author: req.user._id,
+          _id: { $ne: req.params.urlId }
+      });
+
+      if (existingPage) {
+          return res.status(400).json({
+              success: false,
+              error: 'This URL is already in use'
+          });
+      }
+
+      // Update the page
+      const page = await Page.findOneAndUpdate(
+          { urlId: req.params.urlId, author: req.user._id },
+          { urlId: url },
+          { new: true }
+      );
+      
+      if (!page) {
+          return res.status(404).json({ 
+              success: false,
+              error: 'Page not found' 
+          });
+      }
+      
+      // Send successful response with all needed data
+      res.json({
+          success: true,
+          page: {
+              title: page.title,
+              urlId: page.urlId,
+              username: req.user.username
+          }
+      });
+  } catch (error) {
+      console.error('Error updating page URL:', error);
+      res.status(500).json({ 
+          success: false,
+          error: 'Error updating page URL' 
+      });
+  }
+});
+
+// Delete page endpoint
+router.delete('/api/pages/:urlId', isAuthenticated, async (req, res) => {
+    try {
+        const page = await Page.findOneAndDelete({
+            urlId: req.params.urlId,
+            author: req.user._id
+        });
+
+        if (!page) {
+            return res.status(404).json({
+                success: false,
+                error: 'Page not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Page deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting page:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error deleting page'
+        });
+    }
 });
 
 module.exports = router;
