@@ -120,9 +120,9 @@ const throttledMove = throttle((event: KeyboardEvent) => {
     if (event.ctrlKey && event.shiftKey) {
         increment = 0.01;
     } else if (event.ctrlKey) {
-        increment = 0.25;
+        increment = 0.5;
     } else {
-        increment = COORDINATE_STEP;  // 0.02
+        increment = COORDINATE_STEP; 
     }
     
     // Apply movement in grid coordinates

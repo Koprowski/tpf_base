@@ -1,4 +1,4 @@
-export var PLANE_SIZE = 500; // Total size of plane in pixels
+export var PLANE_SIZE = 350; // Total size of plane in pixels
 export var GRID_UNITS = 10; // Number of grid units (-5 to +5)
 export var PIXELS_PER_UNIT = PLANE_SIZE / GRID_UNITS; // 40px per unit
 export var COORDINATE_STEP = 0.1; // Desired movement granularity

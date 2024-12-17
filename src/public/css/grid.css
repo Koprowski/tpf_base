@@ -182,8 +182,8 @@
   
 /* Base grid styles */
 #xy-plane {
-    width: 500px;
-    height: 500px;
+    width: 350px;
+    height: 350px;
     margin: 0 auto;
     position: relative;
     margin-top: 2px;
