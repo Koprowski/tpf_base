@@ -115,6 +115,10 @@ function dotsCreate() {
     });
     function xyPlaneClickHandler(event) {
         var target = event.target;
+        var xyPlane = document.getElementById('xy-plane');
+        if (!xyPlane)
+            return;
+        // Skip if clicking on dot elements
         if (target.classList.contains('dot') ||
             target.classList.contains('dot-container') ||
             target.classList.contains('coordinate-text') ||
@@ -124,6 +128,19 @@ function dotsCreate() {
         }
         // If there was any drag movement, don't create a dot
         if (isSelecting || tpf.isDragging) {
+            return;
+        }
+        // Check for any selected or multi-selected dots
+        var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+        // If there are selected dots, just clear the selection and return
+        if (selectedDots.length > 0) {
+            selectedDots.forEach(function (dot) {
+                dot.classList.remove('selected');
+                dot.classList.remove('multi-selected');
+                adjustHoverBox(dot);
+                adjustSelectedBox(dot);
+            });
+            tpf.selectedDot = null;
             return;
         }
         var rawCoords = getGraphRawCoordinates(event);
@@ -152,15 +169,10 @@ function dotsCreate() {
             }
         };
         if (isClickInsideGraph(graphCoords)) {
-            var xyPlane_1 = document.getElementById('xy-plane');
-            if (!xyPlane_1) {
-                console.error('XY Plane not found');
-                return;
-            }
             if (tpf.currentDot === null) {
                 try {
                     var dot_1 = loadSavedDots(savedDot);
-                    xyPlane_1.appendChild(dot_1);
+                    xyPlane.appendChild(dot_1);
                     // Update connecting line after adding to DOM
                     requestAnimationFrame(function () {
                         updateConnectingLine(dot_1);

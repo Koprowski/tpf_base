@@ -359,54 +359,85 @@ function handleKeyboardMovement(event) {
 function mouseDown(event) {
     log('mouseDown');
     var target = event.target;
-    // Use type assertion with non-null check
+    // Check if we clicked a dot or part of a dot container
     var dotContainer = findDotContainer(target);
-    // Check if Shift key is pressed for multi-selection
     var isShiftKeyPressed = event.shiftKey;
-    // Deselect all dots if not using shift key and not clicking on a dot
-    if (!isShiftKeyPressed && (!dotContainer || target.id === 'xy-plane')) {
-        var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
-        selectedDots.forEach(function (container) {
-            container.classList.remove('selected');
-            container.classList.remove('multi-selected');
-        });
-    }
+    // Handle dot container clicks
     if (dotContainer && !dotContainer.classList.contains('editing') && !document.querySelector('.label-input:focus')) {
         event.preventDefault();
-        // If shift key is not pressed, clear previous selections
+        // If shift key is not pressed, handle single selection
         if (!isShiftKeyPressed) {
-            var previouslySelectedDots = document.querySelectorAll('.dot-container.selected');
-            previouslySelectedDots.forEach(function (dot) { return dot.classList.remove('selected'); });
-        }
-        // Toggle selection for the clicked dot
-        var isCurrentlySelected = dotContainer.classList.contains('selected');
-        if (isShiftKeyPressed) {
-            // If shift is pressed, toggle the current dot's selection
-            dotContainer.classList.toggle('selected');
+            // Clear other selections
+            var previouslySelected = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+            previouslySelected.forEach(function (d) {
+                if (d !== dotContainer) {
+                    d.classList.remove('selected');
+                    d.classList.remove('multi-selected');
+                    adjustHoverBox(d);
+                    adjustSelectedBox(d);
+                }
+            });
+            // Toggle selection on clicked dot
+            var isCurrentlySelected = dotContainer.classList.contains('selected') ||
+                dotContainer.classList.contains('multi-selected');
+            if (isCurrentlySelected) {
+                dotContainer.classList.remove('selected');
+                dotContainer.classList.remove('multi-selected');
+                tpf.selectedDot = null;
+            }
+            else {
+                dotContainer.classList.add('selected');
+                dotContainer.classList.remove('multi-selected');
+                tpf.selectedDot = dotContainer;
+            }
         }
         else {
-            // If no shift key, select only this dot
-            dotContainer.classList.add('selected');
+            // Shift key is pressed - handle multi-selection
+            var wasSelected = dotContainer.classList.contains('selected') ||
+                dotContainer.classList.contains('multi-selected');
+            if (wasSelected) {
+                dotContainer.classList.remove('selected');
+                dotContainer.classList.remove('multi-selected');
+            }
+            else {
+                dotContainer.classList.add('multi-selected');
+                dotContainer.classList.remove('selected');
+                tpf.selectedDot = dotContainer;
+            }
+            // Convert any single selections to multi-selections if we have multiple dots
+            var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+            if (selectedDots.length > 1) {
+                selectedDots.forEach(function (dot) {
+                    dot.classList.remove('selected');
+                    dot.classList.add('multi-selected');
+                });
+            }
         }
-        // Update selectedDot to the last selected dot
-        tpf.selectedDot = dotContainer;
-        // Adjust hover and selected boxes
-        adjustSelectedBox(dotContainer);
         adjustHoverBox(dotContainer);
+        adjustSelectedBox(dotContainer);
         // Prepare for potential dragging
         tpf.isDragging = true;
         tpf.currentDot = dotContainer;
         var rect = dotContainer.getBoundingClientRect();
         tpf.offsetX = event.clientX - rect.left;
         tpf.offsetY = event.clientY - rect.top;
+        return; // Exit after handling dot click
     }
-    else if (target.classList.contains('label-input')) {
-        var dotContainers = document.querySelectorAll('.dot-container.selected');
-        dotContainers.forEach(function (container) { return container.classList.remove('selected'); });
-    }
-    // Multi-dot selection with non-null check
+    // Handle xy-plane clicks (including multi-select)
     var xyPlane = document.getElementById('xy-plane');
-    if (xyPlane && event.target === xyPlane && !isShiftKeyPressed) {
+    if (xyPlane && event.target === xyPlane) {
+        if (!isShiftKeyPressed) {
+            // Clear selections on plain click, but allow multi-select to proceed
+            var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+            selectedDots.forEach(function (container) {
+                container.classList.remove('selected');
+                container.classList.remove('multi-selected');
+                adjustHoverBox(container);
+                adjustSelectedBox(container);
+            });
+            tpf.selectedDot = null;
+        }
+        // Always try to handle multi-select when clicking on xy-plane
         handleMultiDotSelection(event);
     }
 }

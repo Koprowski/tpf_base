@@ -1,6 +1,6 @@
-import { tpf } from "./data";
 import log from "./util.log";
-import { dotsSave } from "./dotsSave";
+import { recordDotState, addToUndoHistory, tpf} from './data';
+import { dotsSave, autosaveDots } from './dotsSave';
 
 function adjustHoverBox(dotContainer: HTMLElement) {
     const labelElement = dotContainer.querySelector('.user-dot-label') as HTMLElement;
@@ -110,35 +110,80 @@ export function editDeleteMenu(dot: HTMLElement) {
     const menu = document.createElement('div');
     menu.className = 'edit-menu';
     menu.style.position = 'absolute';
-    
-    const rect = dot.getBoundingClientRect();
-    menu.style.left = rect.right + 5 + 'px';
-    menu.style.top = rect.top + 'px';
-    
-    const deleteOption = document.createElement('div');
-    deleteOption.textContent = 'Delete';
-    deleteOption.onclick = async () => {
-        menu.remove();
-        dot.remove();
-        tpf.selectedDot = null;
+
+    const deleteDots = () => {
+        // Get all selected/multi-selected dots
+        const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
         
-        const deleteEvent = new CustomEvent('dotDeleted', { bubbles: true });
-        document.dispatchEvent(deleteEvent);
-    };
-    
-    menu.appendChild(deleteOption);
-    document.body.appendChild(menu);
-    
-    // Close menu when clicking outside
-    const closeMenu = (e: MouseEvent) => {
-        if (!menu.contains(e.target as Node)) {
-            menu.remove();
-            document.removeEventListener('click', closeMenu);
+        // If we have selected dots, delete those
+        if (selectedDots.length > 0) {
+            selectedDots.forEach(dotElement => {
+                const dotId = dotElement.getAttribute('data-dot-id');
+                if (dotId) {
+                    const previousState = recordDotState(dotElement as HTMLElement);
+                    dotElement.remove();
+                    addToUndoHistory({
+                        type: 'delete',
+                        dotId: dotId,
+                        previousState,
+                        newState: undefined
+                    });
+                }
+            });
+        } else {
+            // If no dots are selected, delete the right-clicked dot
+            const dotId = dot.getAttribute('data-dot-id');
+            if (dotId) {
+                const previousState = recordDotState(dot);
+                dot.remove();
+                addToUndoHistory({
+                    type: 'delete',
+                    dotId: dotId,
+                    previousState,
+                    newState: undefined
+                });
+            }
+        }
+
+        // Clean up menu
+        menu.remove();
+        
+        // Trigger autosave
+        const urlParts = window.location.pathname.split('/');
+        if (urlParts.length > 2 && urlParts[1] !== '') {
+            autosaveDots();
         }
     };
-    
+
+    menu.innerHTML = `
+        <div class="delete">Delete</div>
+    `;
+
+    // Position menu near the cursor
+    const rect = dot.getBoundingClientRect();
+    menu.style.left = rect.left + 'px';
+    menu.style.top = rect.bottom + 'px';
+
+    // Add click handlers
+    const deleteButton = menu.querySelector('.delete');
+    if (deleteButton) {
+        deleteButton.addEventListener('click', deleteDots);
+    }
+
+    // Add menu to document
+    document.body.appendChild(menu);
+
+    // Remove menu when clicking outside
+    const removeMenu = (e: MouseEvent) => {
+        if (!menu.contains(e.target as Node)) {
+            menu.remove();
+            document.removeEventListener('click', removeMenu);
+        }
+    };
+
+    // Delay adding click listener to prevent immediate removal
     setTimeout(() => {
-        document.addEventListener('click', closeMenu);
+        document.addEventListener('click', removeMenu);
     }, 0);
 }
 

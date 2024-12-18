@@ -87,7 +87,10 @@ function dotsCreate() {
 
     function xyPlaneClickHandler(event: MouseEvent) {
         const target = event.target as HTMLElement;
+        const xyPlane = document.getElementById('xy-plane');
+        if (!xyPlane) return;
         
+        // Skip if clicking on dot elements
         if (target.classList.contains('dot') || 
             target.classList.contains('dot-container') ||
             target.classList.contains('coordinate-text') ||
@@ -98,6 +101,21 @@ function dotsCreate() {
 
         // If there was any drag movement, don't create a dot
         if (isSelecting || tpf.isDragging) {
+            return;
+        }
+
+        // Check for any selected or multi-selected dots
+        const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+        
+        // If there are selected dots, just clear the selection and return
+        if (selectedDots.length > 0) {
+            selectedDots.forEach(dot => {
+                dot.classList.remove('selected');
+                dot.classList.remove('multi-selected');
+                adjustHoverBox(dot as HTMLElement);
+                adjustSelectedBox(dot as HTMLElement);
+            });
+            tpf.selectedDot = null;
             return;
         }
 
@@ -131,12 +149,6 @@ function dotsCreate() {
         };
 
         if (isClickInsideGraph(graphCoords)) {
-            const xyPlane = document.getElementById('xy-plane');
-            if (!xyPlane) {
-                console.error('XY Plane not found');
-                return;
-            }
-
             if (tpf.currentDot === null) {
                 try {
                     const dot = loadSavedDots(savedDot);
