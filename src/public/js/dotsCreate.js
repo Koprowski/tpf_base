@@ -37,7 +37,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 import { tpf } from "./data";
 import { removeAnyExistingElementsWithClassName } from "./removeAnyExistingElementsWithClassName";
 import log from "./util.log";
-import { mouseDown, mouseUp, mouseMove } from "./mouseEvents";
+import { mouseDown, mouseUp, mouseMove, isSelecting } from "./mouseEvents";
 import { dotsSave, autosaveDots } from "./dotsSave";
 import { pixelToCoordinate, coordinateToPixel } from "./createTickMarks";
 import { DOT_BOX, LABEL_CONNECTION } from './constants';
@@ -120,6 +120,10 @@ function dotsCreate() {
             target.classList.contains('coordinate-text') ||
             target.classList.contains('user-dot-label') ||
             target.classList.contains('dot-coordinates')) {
+            return;
+        }
+        // If there was any drag movement, don't create a dot
+        if (isSelecting || tpf.isDragging) {
             return;
         }
         var rawCoords = getGraphRawCoordinates(event);
@@ -425,33 +429,45 @@ function updateConnectingLine(dot) {
     }
 }
 // dot-container hover & Selected box
-function adjustHoverBox(dotContainer) {
-    var labelElement = dotContainer.querySelector('.user-dot-label');
-    var coordsElement = dotContainer.querySelector('.dot-coordinates');
+function adjustHoverBox(dot) {
+    // Convert to HTMLElement if not already
+    var dotElement = dot instanceof HTMLElement
+        ? dot
+        : dot.classList.contains('dot-container')
+            ? dot
+            : document.createElement('div');
+    var labelElement = dotElement.querySelector('.user-dot-label');
+    var coordsElement = dotElement.querySelector('.dot-coordinates');
     if (!labelElement || !coordsElement)
         return;
     var labelRect = labelElement.getBoundingClientRect();
     var coordsRect = coordsElement.getBoundingClientRect();
     var totalWidth = Math.max(DOT_BOX.MIN_WIDTH, Math.max(labelRect.width, coordsRect.width) + DOT_BOX.LEFT_PADDING);
     var totalHeight = Math.max(DOT_BOX.MIN_HEIGHT, coordsRect.bottom - labelRect.top + 10);
-    dotContainer.style.setProperty('--hover-width', "".concat(totalWidth, "px"));
-    dotContainer.style.setProperty('--hover-height', "".concat(totalHeight, "px"));
-    dotContainer.style.setProperty('--hover-top', "".concat(DOT_BOX.TOP_OFFSET, "px"));
-    dotContainer.style.setProperty('--hover-left', "-".concat(DOT_BOX.DOT_WIDTH / 2 + 2, "px"));
+    dotElement.style.setProperty('--hover-width', "".concat(totalWidth, "px"));
+    dotElement.style.setProperty('--hover-height', "".concat(totalHeight, "px"));
+    dotElement.style.setProperty('--hover-top', "".concat(DOT_BOX.TOP_OFFSET, "px"));
+    dotElement.style.setProperty('--hover-left', "-".concat(DOT_BOX.DOT_WIDTH / 2 + 2, "px"));
 }
-function adjustSelectedBox(dotContainer) {
-    var labelElement = dotContainer.querySelector('.user-dot-label');
-    var coordsElement = dotContainer.querySelector('.dot-coordinates');
+function adjustSelectedBox(dot) {
+    // Convert to HTMLElement if not already
+    var dotElement = dot instanceof HTMLElement
+        ? dot
+        : dot.classList.contains('dot-container')
+            ? dot
+            : document.createElement('div');
+    var labelElement = dotElement.querySelector('.user-dot-label');
+    var coordsElement = dotElement.querySelector('.dot-coordinates');
     if (!labelElement || !coordsElement)
         return;
     var labelRect = labelElement.getBoundingClientRect();
     var coordsRect = coordsElement.getBoundingClientRect();
     var totalWidth = Math.max(DOT_BOX.MIN_WIDTH, Math.max(labelRect.width, coordsRect.width) + DOT_BOX.LEFT_PADDING);
     var totalHeight = Math.max(DOT_BOX.MIN_HEIGHT, coordsRect.bottom - labelRect.top + 10);
-    dotContainer.style.setProperty('--hover-width', "".concat(totalWidth, "px"));
-    dotContainer.style.setProperty('--hover-height', "".concat(totalHeight, "px"));
-    dotContainer.style.setProperty('--hover-top', "".concat(DOT_BOX.TOP_OFFSET, "px"));
-    dotContainer.style.setProperty('--hover-left', "-".concat(DOT_BOX.DOT_WIDTH / 2 + 2, "px"));
+    dotElement.style.setProperty('--hover-width', "".concat(totalWidth, "px"));
+    dotElement.style.setProperty('--hover-height', "".concat(totalHeight, "px"));
+    dotElement.style.setProperty('--hover-top', "".concat(DOT_BOX.TOP_OFFSET, "px"));
+    dotElement.style.setProperty('--hover-left', "-".concat(DOT_BOX.DOT_WIDTH / 2 + 2, "px"));
 }
 function updateCoordinatePrecision(dotContainer, highPrecision) {
     var coordsElement = dotContainer.querySelector('.dot-coordinates');

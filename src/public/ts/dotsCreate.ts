@@ -1,7 +1,7 @@
 import { tpf } from "./data";
 import { removeAnyExistingElementsWithClassName } from "./removeAnyExistingElementsWithClassName";
 import log from "./util.log";
-import { mouseDown, mouseUp, mouseMove } from "./mouseEvents";
+import { mouseDown, mouseUp, mouseMove,isSelecting } from "./mouseEvents";
 import { dotsSave, autosaveDots } from "./dotsSave";
 import { pixelToCoordinate, coordinateToPixel } from "./createTickMarks";
 import { DOT_BOX, LABEL_CONNECTION } from './constants';
@@ -95,7 +95,12 @@ function dotsCreate() {
             target.classList.contains('dot-coordinates')) {
             return;
         }
-    
+
+        // If there was any drag movement, don't create a dot
+        if (isSelecting || tpf.isDragging) {
+            return;
+        }
+
         const rawCoords = getGraphRawCoordinates(event);
         const graphCoords = {
             x: pixelToCoordinate(rawCoords.x),
@@ -106,12 +111,12 @@ function dotsCreate() {
             x: coordinateToPixel(graphCoords.x),
             y: coordinateToPixel(-graphCoords.y)
         };
-    
+
         const adjustedPosition = {
             x: pixelPosition.x,
             y: pixelPosition.y
         };
-    
+
         const dotId = generateDotId();
         const savedDot: SavedDot = {
             x: adjustedPosition.x + 'px',
@@ -124,14 +129,14 @@ function dotsCreate() {
                 y: -LABEL_CONNECTION.DEFAULT_LENGTH
             }
         };
-    
+
         if (isClickInsideGraph(graphCoords)) {
             const xyPlane = document.getElementById('xy-plane');
             if (!xyPlane) {
                 console.error('XY Plane not found');
                 return;
             }
-    
+
             if (tpf.currentDot === null) {
                 try {
                     const dot = loadSavedDots(savedDot);
@@ -141,7 +146,7 @@ function dotsCreate() {
                     requestAnimationFrame(() => {
                         updateConnectingLine(dot);
                     });
-    
+
                     // Start label editing
                     const labelElement = dot.querySelector('.user-dot-label') as HTMLElement;
                     if (labelElement) {
@@ -149,7 +154,7 @@ function dotsCreate() {
                             createLabelEditor(labelElement, dot);
                         }, 0);
                     }
-    
+
                     // Fire creation event
                     const createAction = {
                         type: 'create' as const,
@@ -160,7 +165,7 @@ function dotsCreate() {
                         bubbles: true,
                         detail: createAction
                     }));
-    
+
                     // Autosave if not on homepage
                     const urlParts = window.location.pathname.split('/');
                     if (urlParts.length > 2 && urlParts[1] !== '') {
@@ -172,6 +177,7 @@ function dotsCreate() {
             }
         }
     }
+
 }
 
 // Helper Dot Creation Function
@@ -446,9 +452,16 @@ function updateConnectingLine(dot: HTMLElement) {
 
 // dot-container hover & Selected box
 
-function adjustHoverBox(dotContainer: HTMLDivElement) {
-    const labelElement = dotContainer.querySelector('.user-dot-label') as HTMLElement;
-    const coordsElement = dotContainer.querySelector('.dot-coordinates') as HTMLElement;
+function adjustHoverBox(dot: Element): void {
+    // Convert to HTMLElement if not already
+    const dotElement = dot instanceof HTMLElement 
+        ? dot 
+        : dot.classList.contains('dot-container') 
+            ? dot as HTMLElement 
+            : document.createElement('div');
+    
+    const labelElement = dotElement.querySelector('.user-dot-label');
+    const coordsElement = dotElement.querySelector('.dot-coordinates');
     
     if (!labelElement || !coordsElement) return;
     
@@ -458,15 +471,22 @@ function adjustHoverBox(dotContainer: HTMLDivElement) {
     const totalWidth = Math.max(DOT_BOX.MIN_WIDTH, Math.max(labelRect.width, coordsRect.width) + DOT_BOX.LEFT_PADDING);
     const totalHeight = Math.max(DOT_BOX.MIN_HEIGHT, coordsRect.bottom - labelRect.top + 10);
     
-    dotContainer.style.setProperty('--hover-width', `${totalWidth}px`);
-    dotContainer.style.setProperty('--hover-height', `${totalHeight}px`);
-    dotContainer.style.setProperty('--hover-top', `${DOT_BOX.TOP_OFFSET}px`);
-    dotContainer.style.setProperty('--hover-left', `-${DOT_BOX.DOT_WIDTH/2+2}px`);
+    dotElement.style.setProperty('--hover-width', `${totalWidth}px`);
+    dotElement.style.setProperty('--hover-height', `${totalHeight}px`);
+    dotElement.style.setProperty('--hover-top', `${DOT_BOX.TOP_OFFSET}px`);
+    dotElement.style.setProperty('--hover-left', `-${DOT_BOX.DOT_WIDTH/2+2}px`);
 }
 
-function adjustSelectedBox(dotContainer: HTMLElement) {
-    const labelElement = dotContainer.querySelector('.user-dot-label') as HTMLElement;
-    const coordsElement = dotContainer.querySelector('.dot-coordinates') as HTMLElement;
+function adjustSelectedBox(dot: Element): void {
+    // Convert to HTMLElement if not already
+    const dotElement = dot instanceof HTMLElement 
+        ? dot 
+        : dot.classList.contains('dot-container') 
+            ? dot as HTMLElement 
+            : document.createElement('div');
+    
+    const labelElement = dotElement.querySelector('.user-dot-label');
+    const coordsElement = dotElement.querySelector('.dot-coordinates');
     
     if (!labelElement || !coordsElement) return;
     
@@ -476,10 +496,10 @@ function adjustSelectedBox(dotContainer: HTMLElement) {
     const totalWidth = Math.max(DOT_BOX.MIN_WIDTH, Math.max(labelRect.width, coordsRect.width) + DOT_BOX.LEFT_PADDING);
     const totalHeight = Math.max(DOT_BOX.MIN_HEIGHT, coordsRect.bottom - labelRect.top + 10);
     
-    dotContainer.style.setProperty('--hover-width', `${totalWidth}px`);
-    dotContainer.style.setProperty('--hover-height', `${totalHeight}px`);
-    dotContainer.style.setProperty('--hover-top', `${DOT_BOX.TOP_OFFSET}px`);
-    dotContainer.style.setProperty('--hover-left', `-${DOT_BOX.DOT_WIDTH/2+2}px`);
+    dotElement.style.setProperty('--hover-width', `${totalWidth}px`);
+    dotElement.style.setProperty('--hover-height', `${totalHeight}px`);
+    dotElement.style.setProperty('--hover-top', `${DOT_BOX.TOP_OFFSET}px`);
+    dotElement.style.setProperty('--hover-left', `-${DOT_BOX.DOT_WIDTH/2+2}px`);
 }
 
 function updateCoordinatePrecision(dotContainer: HTMLDivElement, highPrecision: boolean) {

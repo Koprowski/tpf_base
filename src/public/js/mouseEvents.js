@@ -40,9 +40,18 @@ import { coordinateToPixel, pixelToCoordinate, normalizeCoordinate } from './cre
 import { recordDotState, generateDotId, addToUndoHistory } from "./data";
 import { dotsSave } from "./dotsSave";
 import log from "./util.log";
-import { adjustHoverBox } from './dotsCreate';
+import { adjustHoverBox, adjustSelectedBox } from './dotsCreate';
 import { updateConnectingLine } from './utils';
 import { throttle, debounce } from './keyboardUtils';
+function ensureHTMLElement(element) {
+    if (element instanceof HTMLElement) {
+        return element;
+    }
+    // Fallback: create a new HTMLElement if conversion fails
+    var htmlElement = document.createElement('div');
+    htmlElement.innerHTML = element.innerHTML;
+    return htmlElement;
+}
 export function getAbsolutePosition(coordinate, isX) {
     if (isX === void 0) { isX = true; }
     return coordinateToPixel(isX ? coordinate : -coordinate);
@@ -126,17 +135,13 @@ var debouncedLog = debounce(function (message) {
 }, 100);
 // Create throttled movement function for keyboard
 var throttledMove = throttle(function (event) {
-    if (!tpf.selectedDot)
+    // Get all currently selected dots
+    var selectedDots = document.querySelectorAll('.dot-container.selected');
+    if (selectedDots.length === 0)
         return;
     var xyPlane = document.getElementById('xy-plane');
     if (!xyPlane)
         return;
-    // Get current position using parseFloat instead of parseInt to preserve decimals
-    var currentLeft = parseFloat(tpf.selectedDot.style.left) || 0;
-    var currentTop = parseFloat(tpf.selectedDot.style.top) || 0;
-    // Convert current pixel position to grid coordinates
-    var currentGridX = pixelToCoordinate(currentLeft);
-    var currentGridY = -pixelToCoordinate(currentTop);
     // Determine increment based on key combination
     var increment;
     if (event.ctrlKey && event.shiftKey) {
@@ -148,56 +153,114 @@ var throttledMove = throttle(function (event) {
     else {
         increment = COORDINATE_STEP;
     }
-    // Apply movement in grid coordinates
-    switch (event.key) {
-        case 'ArrowLeft':
-            currentGridX -= increment;
-            break;
-        case 'ArrowRight':
-            currentGridX += increment;
-            break;
-        case 'ArrowUp':
-            currentGridY += increment;
-            break;
-        case 'ArrowDown':
-            currentGridY -= increment;
-            break;
-    }
-    // Ensure coordinates stay within bounds (-5 to 5)
-    currentGridX = Math.max(-5, Math.min(5, currentGridX));
-    currentGridY = Math.max(-5, Math.min(5, currentGridY));
-    // Convert back to pixels
-    var newLeft = coordinateToPixel(currentGridX);
-    var newTop = coordinateToPixel(-currentGridY);
-    // Update position
-    tpf.selectedDot.style.left = "".concat(newLeft, "px");
-    tpf.selectedDot.style.top = "".concat(newTop, "px");
-    // Update coordinates text with precise formatting
-    var coordsElement = tpf.selectedDot.querySelector('.dot-coordinates');
-    if (coordsElement) {
-        coordsElement.textContent = "(".concat(currentGridX.toFixed(1), ", ").concat(currentGridY.toFixed(1), ")"); //change here
-    }
-    // Update connecting line and hover box
-    updateConnectingLine(tpf.selectedDot);
-    if (tpf.selectedDot.classList.contains('selected')) {
-        adjustHoverBox(tpf.selectedDot);
-    }
+    // Move all selected dots
+    selectedDots.forEach(function (selectedDot) {
+        var dot = selectedDot;
+        // Get current position using parseFloat instead of parseInt to preserve decimals
+        var currentLeft = parseFloat(dot.style.left) || 0;
+        var currentTop = parseFloat(dot.style.top) || 0;
+        // Convert current pixel position to grid coordinates
+        var currentGridX = pixelToCoordinate(currentLeft);
+        var currentGridY = -pixelToCoordinate(currentTop);
+        // Apply movement in grid coordinates
+        switch (event.key) {
+            case 'ArrowLeft':
+                currentGridX -= increment;
+                break;
+            case 'ArrowRight':
+                currentGridX += increment;
+                break;
+            case 'ArrowUp':
+                currentGridY += increment;
+                break;
+            case 'ArrowDown':
+                currentGridY -= increment;
+                break;
+        }
+        // Ensure coordinates stay within bounds (-5 to 5)
+        currentGridX = Math.max(-5, Math.min(5, currentGridX));
+        currentGridY = Math.max(-5, Math.min(5, currentGridY));
+        // Convert back to pixels
+        var newLeft = coordinateToPixel(currentGridX);
+        var newTop = coordinateToPixel(-currentGridY);
+        // Update position
+        dot.style.left = "".concat(newLeft, "px");
+        dot.style.top = "".concat(newTop, "px");
+        // Update coordinates text with precise formatting
+        var coordsElement = dot.querySelector('.dot-coordinates');
+        if (coordsElement) {
+            coordsElement.textContent = "(".concat(currentGridX.toFixed(1), ", ").concat(currentGridY.toFixed(1), ")");
+        }
+        // Update connecting line and hover box
+        updateConnectingLine(dot);
+        if (dot.classList.contains('selected')) {
+            adjustHoverBox(dot);
+        }
+    });
     // Log movement
     debouncedLog('handleKeyboardMovement triggered');
 }, 16);
 // Create throttled mouse move function for dragging
 var throttledMouseMove = throttle(function (event) {
+    var _a, _b, _c;
     // Skip if we're not actually dragging
-    if (!tpf.isDragging || !tpf.currentDot || tpf.currentDot.classList.contains('editing'))
+    if (!tpf.isDragging || ((_a = tpf.currentDot) === null || _a === void 0 ? void 0 : _a.classList.contains('editing')))
         return;
-    event.preventDefault();
     var xyPlane = document.getElementById('xy-plane');
     if (!xyPlane)
         return;
     var rect = xyPlane.getBoundingClientRect();
     var newLeft = event.clientX - rect.left;
     var newTop = event.clientY - rect.top;
-    if (isWithinBounds(newLeft, newTop, rect)) {
+    // Check for multi-dot selection
+    var multiSelectedDots = document.querySelectorAll('.dot-container.multi-selected');
+    // Function to move a single dot and update its properties
+    var moveDot = function (dot, deltaX, deltaY) {
+        // Get current position with explicit fallback
+        var currentLeft = parseFloat(dot.style.left || '0');
+        var currentTop = parseFloat(dot.style.top || '0');
+        // Calculate new position
+        var finalLeft = currentLeft + deltaX;
+        var finalTop = currentTop + deltaY;
+        // Convert to grid coordinates
+        var x = pixelToCoordinate(finalLeft);
+        var y = -pixelToCoordinate(finalTop);
+        // Normalize coordinates
+        var normalizedX = Math.max(-5, Math.min(5, x));
+        var normalizedY = Math.max(-5, Math.min(5, y));
+        // Convert back to pixels
+        var finalPixelLeft = coordinateToPixel(normalizedX);
+        var finalPixelTop = coordinateToPixel(-normalizedY);
+        // Update dot position
+        dot.style.left = "".concat(finalPixelLeft, "px");
+        dot.style.top = "".concat(finalPixelTop, "px");
+        // Update coordinates text
+        var coordsElement = dot.querySelector('.dot-coordinates');
+        if (coordsElement) {
+            coordsElement.textContent = "(".concat(normalizedX.toFixed(1), ", ").concat(normalizedY.toFixed(1), ")");
+        }
+        // Update connecting line
+        updateConnectingLine(dot);
+        // Adjust hover box if needed
+        if (dot.classList.contains('selected')) {
+            // Type assertion to handle hover box function
+            adjustHoverBox(dot);
+        }
+    };
+    // If multiple dots are selected, move them together
+    if (multiSelectedDots.length > 0) {
+        // Safe parsing with explicit fallback
+        var currentDotLeft = ((_b = tpf.currentDot) === null || _b === void 0 ? void 0 : _b.style.left) || '0';
+        var currentDotTop = ((_c = tpf.currentDot) === null || _c === void 0 ? void 0 : _c.style.top) || '0';
+        // Calculate movement delta
+        var deltaX_1 = newLeft - parseFloat(currentDotLeft);
+        var deltaY_1 = newTop - parseFloat(currentDotTop);
+        multiSelectedDots.forEach(function (dot) {
+            moveDot(dot, deltaX_1, deltaY_1);
+        });
+    }
+    // Otherwise, move the single current dot
+    else if (tpf.currentDot && isWithinBounds(newLeft, newTop, rect)) {
         var x = pixelToCoordinate(newLeft);
         var y = -pixelToCoordinate(newTop);
         var normalizedX = normalizeCoordinate(x);
@@ -207,7 +270,6 @@ var throttledMouseMove = throttle(function (event) {
         // Update position
         tpf.currentDot.style.left = "".concat(finalLeft, "px");
         tpf.currentDot.style.top = "".concat(finalTop, "px");
-        tpf.currentDot.style.transform = 'translate(-50%, -50%)';
         // Update coordinates text
         var coordsElement = tpf.currentDot.querySelector('.dot-coordinates');
         if (coordsElement) {
@@ -217,25 +279,121 @@ var throttledMouseMove = throttle(function (event) {
         updateConnectingLine(tpf.currentDot);
         // Update hover box if needed
         if (tpf.currentDot.classList.contains('selected')) {
+            // Type assertion to handle hover box function
             adjustHoverBox(tpf.currentDot);
         }
     }
-}, 16);
+}, 16); // 16ms is roughly 60 FPS
 // Main keyboard handler
 function handleKeyboardMovement(event) {
     var isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key);
-    if (!isArrowKey || !tpf.selectedDot) {
+    // Get all selected dots, including both single and multi-selected
+    var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+    if (!isArrowKey || selectedDots.length === 0) {
         return;
     }
     event.preventDefault();
-    throttledMove(event);
+    // Determine increment based on key combination
+    var increment;
+    if (event.ctrlKey && event.shiftKey) {
+        increment = 0.01;
+    }
+    else if (event.ctrlKey) {
+        increment = 0.5;
+    }
+    else {
+        increment = COORDINATE_STEP;
+    }
+    // Move all selected dots
+    selectedDots.forEach(function (selectedDot) {
+        var dot = selectedDot;
+        // Get current position using parseFloat to preserve decimals
+        var currentLeft = parseFloat(dot.style.left) || 0;
+        var currentTop = parseFloat(dot.style.top) || 0;
+        // Convert current pixel position to grid coordinates
+        var currentGridX = pixelToCoordinate(currentLeft);
+        var currentGridY = -pixelToCoordinate(currentTop);
+        // Apply movement in grid coordinates
+        switch (event.key) {
+            case 'ArrowLeft':
+                currentGridX -= increment;
+                break;
+            case 'ArrowRight':
+                currentGridX += increment;
+                break;
+            case 'ArrowUp':
+                currentGridY += increment;
+                break;
+            case 'ArrowDown':
+                currentGridY -= increment;
+                break;
+        }
+        // Ensure coordinates stay within bounds (-5 to 5)
+        currentGridX = Math.max(-5, Math.min(5, currentGridX));
+        currentGridY = Math.max(-5, Math.min(5, currentGridY));
+        // Convert back to pixels
+        var newLeft = coordinateToPixel(currentGridX);
+        var newTop = coordinateToPixel(-currentGridY);
+        // Update position
+        dot.style.left = "".concat(newLeft, "px");
+        dot.style.top = "".concat(newTop, "px");
+        // Update coordinates text with precise formatting
+        var coordsElement = dot.querySelector('.dot-coordinates');
+        if (coordsElement) {
+            coordsElement.textContent = "(".concat(currentGridX.toFixed(1), ", ").concat(currentGridY.toFixed(1), ")");
+        }
+        // Update connecting line and hover box
+        updateConnectingLine(dot);
+        if (dot.classList.contains('selected')) {
+            adjustHoverBox(dot);
+        }
+    });
+    // Log movement
+    debouncedLog('handleKeyboardMovement triggered');
+    // Trigger autosave after movement
+    var urlParts = window.location.pathname.split('/');
+    if (urlParts.length > 2 && urlParts[1] !== '') {
+        autosaveDots();
+    }
 }
 function mouseDown(event) {
     log('mouseDown');
     var target = event.target;
+    // Use type assertion with non-null check
     var dotContainer = findDotContainer(target);
+    // Check if Shift key is pressed for multi-selection
+    var isShiftKeyPressed = event.shiftKey;
+    // Deselect all dots if not using shift key and not clicking on a dot
+    if (!isShiftKeyPressed && (!dotContainer || target.id === 'xy-plane')) {
+        var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+        selectedDots.forEach(function (container) {
+            container.classList.remove('selected');
+            container.classList.remove('multi-selected');
+        });
+    }
     if (dotContainer && !dotContainer.classList.contains('editing') && !document.querySelector('.label-input:focus')) {
         event.preventDefault();
+        // If shift key is not pressed, clear previous selections
+        if (!isShiftKeyPressed) {
+            var previouslySelectedDots = document.querySelectorAll('.dot-container.selected');
+            previouslySelectedDots.forEach(function (dot) { return dot.classList.remove('selected'); });
+        }
+        // Toggle selection for the clicked dot
+        var isCurrentlySelected = dotContainer.classList.contains('selected');
+        if (isShiftKeyPressed) {
+            // If shift is pressed, toggle the current dot's selection
+            dotContainer.classList.toggle('selected');
+        }
+        else {
+            // If no shift key, select only this dot
+            dotContainer.classList.add('selected');
+        }
+        // Update selectedDot to the last selected dot
+        tpf.selectedDot = dotContainer;
+        // Adjust hover and selected boxes
+        adjustSelectedBox(dotContainer);
+        adjustHoverBox(dotContainer);
+        // Prepare for potential dragging
         tpf.isDragging = true;
         tpf.currentDot = dotContainer;
         var rect = dotContainer.getBoundingClientRect();
@@ -246,6 +404,23 @@ function mouseDown(event) {
         var dotContainers = document.querySelectorAll('.dot-container.selected');
         dotContainers.forEach(function (container) { return container.classList.remove('selected'); });
     }
+    // Multi-dot selection with non-null check
+    var xyPlane = document.getElementById('xy-plane');
+    if (xyPlane && event.target === xyPlane && !isShiftKeyPressed) {
+        handleMultiDotSelection(event);
+    }
+}
+// Update findDotContainer to handle potential null cases more explicitly
+function findDotContainer(element) {
+    if (!element)
+        return null;
+    if (element.classList.contains('dot-container')) {
+        return element;
+    }
+    if (element.parentElement) {
+        return findDotContainer(element.parentElement);
+    }
+    return null;
 }
 function handleLabelBoxDrag(event) {
     if (!tpf.currentLabelBox)
@@ -268,12 +443,81 @@ function handleLabelBoxDrag(event) {
     }
 }
 function mouseMove(event) {
+    var _a, _b, _c;
     // Handle label box dragging separately and without throttling
     if (tpf.isLabelBoxDragging && tpf.currentLabelBox) {
         handleLabelBoxDrag(event);
         return;
     }
-    throttledMouseMove(event);
+    // Skip if we're not dragging or editing
+    if (!tpf.isDragging || ((_a = tpf.currentDot) === null || _a === void 0 ? void 0 : _a.classList.contains('editing')))
+        return;
+    var xyPlane = document.getElementById('xy-plane');
+    if (!xyPlane)
+        return;
+    var rect = xyPlane.getBoundingClientRect();
+    var newLeft = event.clientX - rect.left;
+    var newTop = event.clientY - rect.top;
+    // Get all selected dots
+    var selectedDots = document.querySelectorAll('.dot-container.selected');
+    // If we have multiple selected dots
+    if (selectedDots.length > 1) {
+        // Calculate movement delta based on current dot
+        var currentLeft = parseFloat(((_b = tpf.currentDot) === null || _b === void 0 ? void 0 : _b.style.left) || '0');
+        var currentTop = parseFloat(((_c = tpf.currentDot) === null || _c === void 0 ? void 0 : _c.style.top) || '0');
+        var deltaX_2 = newLeft - currentLeft;
+        var deltaY_2 = newTop - currentTop;
+        // Move all selected dots by the same delta
+        selectedDots.forEach(function (dot) {
+            var dotEl = dot;
+            var originalLeft = parseFloat(dotEl.style.left || '0');
+            var originalTop = parseFloat(dotEl.style.top || '0');
+            var finalLeft = originalLeft + deltaX_2;
+            var finalTop = originalTop + deltaY_2;
+            // Convert to grid coordinates
+            var x = pixelToCoordinate(finalLeft);
+            var y = -pixelToCoordinate(finalTop);
+            // Normalize coordinates
+            var normalizedX = Math.max(-5, Math.min(5, x));
+            var normalizedY = Math.max(-5, Math.min(5, y));
+            // Convert back to pixels
+            var finalPixelLeft = coordinateToPixel(normalizedX);
+            var finalPixelTop = coordinateToPixel(-normalizedY);
+            // Update position
+            dotEl.style.left = "".concat(finalPixelLeft, "px");
+            dotEl.style.top = "".concat(finalPixelTop, "px");
+            // Update coordinates display
+            var coordsElement = dotEl.querySelector('.dot-coordinates');
+            if (coordsElement) {
+                coordsElement.textContent = "(".concat(normalizedX.toFixed(1), ", ").concat(normalizedY.toFixed(1), ")");
+            }
+            // Update connecting line
+            updateConnectingLine(dotEl);
+            // Update hover box if selected
+            if (dotEl.classList.contains('selected')) {
+                adjustHoverBox(dotEl);
+            }
+        });
+    }
+    // Single dot movement (original behavior)
+    else if (tpf.currentDot && isWithinBounds(newLeft, newTop, rect)) {
+        var x = pixelToCoordinate(newLeft);
+        var y = -pixelToCoordinate(newTop);
+        var normalizedX = normalizeCoordinate(x);
+        var normalizedY = normalizeCoordinate(y);
+        var finalLeft = coordinateToPixel(normalizedX);
+        var finalTop = coordinateToPixel(-normalizedY);
+        tpf.currentDot.style.left = "".concat(finalLeft, "px");
+        tpf.currentDot.style.top = "".concat(finalTop, "px");
+        var coordsElement = tpf.currentDot.querySelector('.dot-coordinates');
+        if (coordsElement) {
+            coordsElement.textContent = "(".concat(normalizedX.toFixed(1), ", ").concat(normalizedY.toFixed(1), ")");
+        }
+        updateConnectingLine(tpf.currentDot);
+        if (tpf.currentDot.classList.contains('selected')) {
+            adjustHoverBox(tpf.currentDot);
+        }
+    }
 }
 function mouseUp(event) {
     log('mouseUp');
@@ -305,17 +549,6 @@ function mouseUp(event) {
             tpf.skipGraphClick = false;
         }, 0);
     }
-}
-function findDotContainer(element) {
-    if (!element)
-        return null;
-    if (element.classList.contains('dot-container')) {
-        return element;
-    }
-    if (element.parentElement) {
-        return findDotContainer(element.parentElement);
-    }
-    return null;
 }
 function isWithinBounds(x, y, rect) {
     return x >= 0 && x <= rect.width && y >= 0 && y <= rect.height;
@@ -390,4 +623,211 @@ export function startLabelBoxDrag(dot, labelBox, event) {
         window.onmouseup = originalMouseUp;
     };
 }
-export { tpf, mouseMove, mouseUp, mouseDown, adjustHoverBox, autosaveDots, debounce, throttle, handleKeyboardMovement };
+// SELECT and MOVE MULTIPLE DOTS START//
+var isSelecting = false;
+var selectionStart = null;
+var selectionRectangle = null;
+function createSelectionRectangle() {
+    var rectangle = document.createElement('div');
+    rectangle.classList.add('selection-rectangle');
+    rectangle.style.position = 'absolute';
+    rectangle.style.border = '1px solid blue';
+    rectangle.style.backgroundColor = 'rgba(0, 0, 255, 0.1)';
+    rectangle.style.pointerEvents = 'none';
+    return rectangle;
+}
+function handleMultiDotSelection(event) {
+    var xyPlane = document.getElementById('xy-plane');
+    if (!xyPlane)
+        return;
+    // Prevent default to stop dot creation
+    event.preventDefault();
+    event.stopPropagation();
+    // Only start selection if clicking on empty graph space
+    if (event.target !== xyPlane)
+        return;
+    // Clean up any existing selection rectangles first
+    var existingRectangles = document.querySelectorAll('.selection-rectangle');
+    existingRectangles.forEach(function (rect) { return rect.remove(); });
+    // Clear previous selections if not using shift key
+    if (!event.shiftKey) {
+        var previouslySelected = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+        previouslySelected.forEach(function (dot) {
+            dot.classList.remove('selected');
+            dot.classList.remove('multi-selected');
+            adjustHoverBox(dot);
+            adjustSelectedBox(dot);
+        });
+    }
+    isSelecting = true;
+    selectionStart = {
+        x: event.clientX - xyPlane.getBoundingClientRect().left,
+        y: event.clientY - xyPlane.getBoundingClientRect().top
+    };
+    // Create and add selection rectangle to the document body
+    selectionRectangle = createSelectionRectangle();
+    document.body.appendChild(selectionRectangle);
+    var cleanup = function () {
+        isSelecting = false;
+        if (selectionRectangle) {
+            selectionRectangle.remove();
+            selectionRectangle = null;
+        }
+        selectionStart = null;
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener('keydown', onEscape);
+    };
+    var onEscape = function (e) {
+        if (e.key === 'Escape') {
+            cleanup();
+        }
+    };
+    var onMouseMove = function (moveEvent) {
+        if (!isSelecting || !selectionStart || !selectionRectangle || !xyPlane)
+            return;
+        // Calculate positions relative to page
+        var xyPlaneRect = xyPlane.getBoundingClientRect();
+        var currentX = moveEvent.clientX;
+        var currentY = moveEvent.clientY;
+        var startX = xyPlaneRect.left + selectionStart.x;
+        var startY = xyPlaneRect.top + selectionStart.y;
+        // Update rectangle dimensions
+        var width = Math.abs(currentX - startX);
+        var height = Math.abs(currentY - startY);
+        var left = Math.min(currentX, startX);
+        var top = Math.min(currentY, startY);
+        Object.assign(selectionRectangle.style, {
+            position: 'fixed',
+            width: "".concat(width, "px"),
+            height: "".concat(height, "px"),
+            left: "".concat(left, "px"),
+            top: "".concat(top, "px"),
+            display: 'block',
+            zIndex: '1000'
+        });
+        // Update selected dots
+        var dots = document.querySelectorAll('.dot-container');
+        var selectedDots = new Set();
+        dots.forEach(function (dot) {
+            var dotRect = dot.getBoundingClientRect();
+            var dotBox = {
+                left: dotRect.left,
+                right: dotRect.right,
+                top: dotRect.top,
+                bottom: dotRect.bottom
+            };
+            // Check if any part of the dot container intersects with selection
+            if (!(left > dotBox.right ||
+                left + width < dotBox.left ||
+                top > dotBox.bottom ||
+                top + height < dotBox.top)) {
+                selectedDots.add(dot);
+            }
+        });
+        // Apply appropriate selection states
+        dots.forEach(function (dot) {
+            if (selectedDots.has(dot)) {
+                // If multiple dots are selected or being selected, use multi-selected
+                if (selectedDots.size > 1) {
+                    dot.classList.remove('selected');
+                    dot.classList.add('multi-selected');
+                }
+                else {
+                    // Single dot selection
+                    dot.classList.add('selected');
+                    dot.classList.remove('multi-selected');
+                }
+            }
+            else if (!moveEvent.shiftKey) {
+                // Clear selection for unselected dots
+                dot.classList.remove('selected');
+                dot.classList.remove('multi-selected');
+            }
+            adjustHoverBox(dot);
+            adjustSelectedBox(dot);
+        });
+    };
+    var onMouseUp = function () {
+        if (!isSelecting)
+            return;
+        // Update selection states one final time
+        var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+        var dotsArray = Array.from(selectedDots);
+        if (dotsArray.length > 0) {
+            // If we have multiple dots, ensure they're all in multi-selected state
+            if (dotsArray.length > 1) {
+                dotsArray.forEach(function (dot) {
+                    dot.classList.remove('selected');
+                    dot.classList.add('multi-selected');
+                    adjustHoverBox(dot);
+                    adjustSelectedBox(dot);
+                });
+            }
+            else {
+                // Single dot should be in selected state
+                var dot = dotsArray[0];
+                dot.classList.add('selected');
+                dot.classList.remove('multi-selected');
+                adjustHoverBox(dot);
+                adjustSelectedBox(dot);
+            }
+            // Update tpf.selectedDot
+            tpf.selectedDot = dotsArray[dotsArray.length - 1];
+        }
+        cleanup();
+    };
+    // Add event listeners to window
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('keydown', onEscape);
+}
+function highlightSelectedDots(left, top, width, height) {
+    var xyPlane = document.getElementById('xy-plane');
+    if (!xyPlane)
+        return;
+    var dotContainers = document.querySelectorAll('.dot-container');
+    var selectedDotsCount = 0;
+    dotContainers.forEach(function (dot) {
+        try {
+            // Convert to HTMLElement safely using our utility function
+            var dotElement = ensureHTMLElement(dot);
+            var dotRect = dotElement.getBoundingClientRect();
+            var xyPlaneRect = xyPlane.getBoundingClientRect();
+            var dotLeft = dotRect.left - xyPlaneRect.left;
+            var dotTop = dotRect.top - xyPlaneRect.top;
+            var dotRight = dotLeft + dotRect.width;
+            var dotBottom = dotTop + dotRect.height;
+            var isInSelection = dotLeft >= left &&
+                dotRight <= left + width &&
+                dotTop >= top &&
+                dotBottom <= top + height;
+            // Only add selected class if not already selected
+            if (isInSelection && !dotElement.classList.contains('selected')) {
+                dotElement.classList.add('selected');
+                // Use the safely converted HTMLElement
+                adjustSelectedBox(dotElement);
+                adjustHoverBox(dotElement);
+                selectedDotsCount++;
+            }
+        }
+        catch (error) {
+            console.error('Error processing dot element:', error);
+        }
+    });
+    // Update the currently selected dot to the last selected dot
+    var selectedDots = document.querySelectorAll('.dot-container.selected');
+    if (selectedDots.length > 0) {
+        try {
+            // Convert last selected dot to HTMLElement safely
+            var lastSelectedDot = ensureHTMLElement(selectedDots[selectedDots.length - 1]);
+            tpf.selectedDot = lastSelectedDot;
+        }
+        catch (error) {
+            console.error('Error setting selected dot:', error);
+        }
+    }
+    console.log("Dots selected: ".concat(selectedDotsCount));
+}
+// SELECT and MOVE MULTIPLE DOTS END //
+export { tpf, mouseMove, mouseUp, mouseDown, adjustHoverBox, autosaveDots, debounce, throttle, handleKeyboardMovement, isSelecting };
