@@ -106,18 +106,28 @@ export function handleEdit(dotContainer: HTMLElement) {
     input.select();
 }
 
+
 export function editDeleteMenu(dot: HTMLElement) {
     const menu = document.createElement('div');
     menu.className = 'edit-menu';
     menu.style.position = 'absolute';
 
     const deleteDots = () => {
-        // Get all selected/multi-selected dots
-        const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+        // Create a Set to handle unique dots to delete
+        const dotsToDelete = new Set<Element>();
         
-        // If we have selected dots, delete those
-        if (selectedDots.length > 0) {
-            selectedDots.forEach(dotElement => {
+        // Add all multi-selected dots
+        document.querySelectorAll('.dot-container.multi-selected').forEach(d => dotsToDelete.add(d));
+        
+        // Add any single-selected dots
+        document.querySelectorAll('.dot-container.selected').forEach(d => dotsToDelete.add(d));
+        
+        // Add the right-clicked dot if not already included
+        dotsToDelete.add(dot);
+        
+        // If we have dots to delete, process them
+        if (dotsToDelete.size > 0) {
+            dotsToDelete.forEach(dotElement => {
                 const dotId = dotElement.getAttribute('data-dot-id');
                 if (dotId) {
                     const previousState = recordDotState(dotElement as HTMLElement);
@@ -130,23 +140,13 @@ export function editDeleteMenu(dot: HTMLElement) {
                     });
                 }
             });
-        } else {
-            // If no dots are selected, delete the right-clicked dot
-            const dotId = dot.getAttribute('data-dot-id');
-            if (dotId) {
-                const previousState = recordDotState(dot);
-                dot.remove();
-                addToUndoHistory({
-                    type: 'delete',
-                    dotId: dotId,
-                    previousState,
-                    newState: undefined
-                });
-            }
         }
 
         // Clean up menu
         menu.remove();
+        
+        // Clear selection tracking
+        tpf.selectedDot = null;
         
         // Trigger autosave
         const urlParts = window.location.pathname.split('/');

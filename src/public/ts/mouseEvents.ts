@@ -83,8 +83,10 @@ function getAllDots() {
 
 document.addEventListener('keydown', (event) => {
     console.log('handleKeyboardMovement triggered');
+    // Handle movement keys
     handleKeyboardMovement(event);
-});
+    // Handle delete key
+    handleKeyboardDelete(event);});
 
 // Centralized state for dot positions
 interface DotState {
@@ -370,6 +372,40 @@ function handleKeyboardMovement(event: KeyboardEvent): void {
     debouncedLog('handleKeyboardMovement triggered');
 
     // Trigger autosave after movement
+    const urlParts = window.location.pathname.split('/');
+    if (urlParts.length > 2 && urlParts[1] !== '') {
+        autosaveDots();
+    }
+}
+
+function handleKeyboardDelete(event: KeyboardEvent) {
+    // Only handle delete key
+    if (event.key !== 'Delete') return;
+    
+    // Get all multi-selected dots
+    const dotsToDelete = document.querySelectorAll('.dot-container.multi-selected, .dot-container.selected');
+    
+    if (dotsToDelete.length === 0) return;
+
+    // Process all selected dots
+    dotsToDelete.forEach(dotElement => {
+        const dotId = dotElement.getAttribute('data-dot-id');
+        if (dotId) {
+            const previousState = recordDotState(dotElement as HTMLElement);
+            dotElement.remove();
+            addToUndoHistory({
+                type: 'delete',
+                dotId: dotId,
+                previousState,
+                newState: undefined
+            });
+        }
+    });
+
+    // Clear selection tracking
+    tpf.selectedDot = null;
+
+    // Trigger autosave if not on homepage
     const urlParts = window.location.pathname.split('/');
     if (urlParts.length > 2 && urlParts[1] !== '') {
         autosaveDots();
@@ -981,5 +1017,6 @@ export {
     debounce,
     throttle,
     handleKeyboardMovement,
+    handleKeyboardDelete,
     isSelecting
 };

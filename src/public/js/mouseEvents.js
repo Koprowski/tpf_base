@@ -119,7 +119,10 @@ function getAllDots() {
 }
 document.addEventListener('keydown', function (event) {
     console.log('handleKeyboardMovement triggered');
+    // Handle movement keys
     handleKeyboardMovement(event);
+    // Handle delete key
+    handleKeyboardDelete(event);
 });
 var dotState = {
     originalGridX: 0,
@@ -351,6 +354,36 @@ function handleKeyboardMovement(event) {
     // Log movement
     debouncedLog('handleKeyboardMovement triggered');
     // Trigger autosave after movement
+    var urlParts = window.location.pathname.split('/');
+    if (urlParts.length > 2 && urlParts[1] !== '') {
+        autosaveDots();
+    }
+}
+function handleKeyboardDelete(event) {
+    // Only handle delete key
+    if (event.key !== 'Delete')
+        return;
+    // Get all multi-selected dots
+    var dotsToDelete = document.querySelectorAll('.dot-container.multi-selected, .dot-container.selected');
+    if (dotsToDelete.length === 0)
+        return;
+    // Process all selected dots
+    dotsToDelete.forEach(function (dotElement) {
+        var dotId = dotElement.getAttribute('data-dot-id');
+        if (dotId) {
+            var previousState = recordDotState(dotElement);
+            dotElement.remove();
+            addToUndoHistory({
+                type: 'delete',
+                dotId: dotId,
+                previousState: previousState,
+                newState: undefined
+            });
+        }
+    });
+    // Clear selection tracking
+    tpf.selectedDot = null;
+    // Trigger autosave if not on homepage
     var urlParts = window.location.pathname.split('/');
     if (urlParts.length > 2 && urlParts[1] !== '') {
         autosaveDots();
@@ -861,4 +894,4 @@ function highlightSelectedDots(left, top, width, height) {
     console.log("Dots selected: ".concat(selectedDotsCount));
 }
 // SELECT and MOVE MULTIPLE DOTS END //
-export { tpf, mouseMove, mouseUp, mouseDown, adjustHoverBox, autosaveDots, debounce, throttle, handleKeyboardMovement, isSelecting };
+export { tpf, mouseMove, mouseUp, mouseDown, adjustHoverBox, autosaveDots, debounce, throttle, handleKeyboardMovement, handleKeyboardDelete, isSelecting };

@@ -94,11 +94,17 @@ export function editDeleteMenu(dot) {
     menu.className = 'edit-menu';
     menu.style.position = 'absolute';
     var deleteDots = function () {
-        // Get all selected/multi-selected dots
-        var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
-        // If we have selected dots, delete those
-        if (selectedDots.length > 0) {
-            selectedDots.forEach(function (dotElement) {
+        // Create a Set to handle unique dots to delete
+        var dotsToDelete = new Set();
+        // Add all multi-selected dots
+        document.querySelectorAll('.dot-container.multi-selected').forEach(function (d) { return dotsToDelete.add(d); });
+        // Add any single-selected dots
+        document.querySelectorAll('.dot-container.selected').forEach(function (d) { return dotsToDelete.add(d); });
+        // Add the right-clicked dot if not already included
+        dotsToDelete.add(dot);
+        // If we have dots to delete, process them
+        if (dotsToDelete.size > 0) {
+            dotsToDelete.forEach(function (dotElement) {
                 var dotId = dotElement.getAttribute('data-dot-id');
                 if (dotId) {
                     var previousState = recordDotState(dotElement);
@@ -112,22 +118,10 @@ export function editDeleteMenu(dot) {
                 }
             });
         }
-        else {
-            // If no dots are selected, delete the right-clicked dot
-            var dotId = dot.getAttribute('data-dot-id');
-            if (dotId) {
-                var previousState = recordDotState(dot);
-                dot.remove();
-                addToUndoHistory({
-                    type: 'delete',
-                    dotId: dotId,
-                    previousState: previousState,
-                    newState: undefined
-                });
-            }
-        }
         // Clean up menu
         menu.remove();
+        // Clear selection tracking
+        tpf.selectedDot = null;
         // Trigger autosave
         var urlParts = window.location.pathname.split('/');
         if (urlParts.length > 2 && urlParts[1] !== '') {
