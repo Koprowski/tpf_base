@@ -558,9 +558,9 @@
     top: 50%;
     left: 50%;
     height: 1px;
-    transform-origin: 2px center;
-    border-top: 1px dashed #d1d5db;
-    pointer-events: auto;
+    transform-origin: left center;
+    border-top: 1px solid #d1d5db;
+    pointer-events: none;
     z-index: 1;
     background-color: #d1d5db;
     display: block;
@@ -572,13 +572,16 @@
 /* Add a hover effect for the line */
 .dot-container:hover .connecting-line {
     border-top: 1px solid #000000;
+    border-top-color: #000000 !important;
+    opacity: 1;
     background-color: #000000;
 }
 
 /* Selected state for the line */
 .dot-container.selected .connecting-line,
 .dot-container.multi-selected .connecting-line {
-    border-top: 1px solid #3b82f6;
+    border-top: 1px solid #3b82f6 !important;
+    opacity: 1;
     background-color: #3b82f6;
 }
 
@@ -594,6 +597,9 @@
     display: inline-block;
     z-index: 2;
     transition: all 0.2s ease-in-out;
+    /* Ensure consistent vertical centering */
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 

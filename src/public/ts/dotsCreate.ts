@@ -228,45 +228,19 @@ function createNewDot(savedDot: SavedDot, xyPlane: HTMLElement) {
             radius: dotRadius
         });
 
-        // Create connecting line with centered origin
-        const line = document.createElement('div');
-        line.className = 'connecting-line';
-        
-        Object.assign(line.style, {
-            position: 'absolute',
-            width: `${LABEL_CONNECTION.DEFAULT_LENGTH}px`,
-            height: '1px',
-            transformOrigin: 'left center',
-            backgroundColor: LABEL_CONNECTION.LINE_COLOR,
-            borderTop: `${LABEL_CONNECTION.LINE_WIDTH}px solid ${LABEL_CONNECTION.LINE_COLOR}`,
-            pointerEvents: 'none',
-            display: 'block',
-            visibility: 'visible',
-            zIndex: '1'
-        });
-
-        // Store initial line properties
-        dot.setAttribute('data-line-length', LABEL_CONNECTION.DEFAULT_LENGTH.toString());
-        line.style.transform = `rotate(-45deg)`;
-        dot.setAttribute('data-line-angle', '-45');
-        
-        dot.appendChild(line);
-
-        // Create and position label container
+        // Create label container first so we can measure it
         const labelContainer = document.createElement('div');
         labelContainer.className = 'label-container';
         Object.assign(labelContainer.style, {
             position: 'absolute',
             left: `${savedDot.labelOffset?.x ?? LABEL_CONNECTION.DEFAULT_LENGTH}px`,
-            top: `${savedDot.labelOffset?.y ?? -LABEL_CONNECTION.DEFAULT_LENGTH}px`,
             backgroundColor: LABEL_CONNECTION.BOX_BACKGROUND,
             border: `${LABEL_CONNECTION.BOX_BORDER_WIDTH}px solid ${LABEL_CONNECTION.BOX_BORDER_COLOR}`,
             borderRadius: `${LABEL_CONNECTION.BOX_BORDER_RADIUS}px`,
             padding: '8px',
             cursor: 'move',
             whiteSpace: 'nowrap',
-            zIndex: '2',
-            transform: 'translateY(-50%)'  // Center vertically
+            zIndex: '2'
         });
 
         labelContainer.innerHTML = `
@@ -275,6 +249,36 @@ function createNewDot(savedDot: SavedDot, xyPlane: HTMLElement) {
         `;
 
         dot.appendChild(labelContainer);
+        
+        // Force a layout calculation
+        dot.offsetHeight;
+        labelContainer.offsetHeight;
+
+        // Create connecting line after label container
+        const line = document.createElement('div');
+        line.className = 'connecting-line';
+        
+        // Initial line setup with explicit positioning
+        Object.assign(line.style, {
+            position: 'absolute',
+            width: `${LABEL_CONNECTION.DEFAULT_LENGTH}px`,
+            height: '1px',
+            top: '50%',
+            left: '50%',
+            transform: 'rotate(0deg)', // Initial straight position
+            transformOrigin: 'left center',
+            backgroundColor: LABEL_CONNECTION.LINE_COLOR,
+            borderTop: `${LABEL_CONNECTION.LINE_WIDTH}px solid ${LABEL_CONNECTION.LINE_COLOR}`,
+            pointerEvents: 'none',
+            display: 'block',
+            zIndex: '1'
+        });
+
+        dot.insertBefore(line, labelContainer);
+
+        // Store initial line properties
+        dot.setAttribute('data-line-length', LABEL_CONNECTION.DEFAULT_LENGTH.toString());
+        dot.setAttribute('data-line-angle', '0');
 
         // Add event listeners
         labelContainer.addEventListener('dblclick', (e) => {
@@ -290,13 +294,10 @@ function createNewDot(savedDot: SavedDot, xyPlane: HTMLElement) {
         dot.addEventListener('mouseup', mouseUp);
         window.addEventListener('mousemove', mouseMove, false);
 
-        // Add to DOM and update line
+        // Add to DOM
         xyPlane.appendChild(dot);
         
-        // Force layout calculation
-        dot.offsetHeight;
-        
-        // Update connecting line with proper centering
+        // Immediately calculate and set the correct line position
         updateConnectingLine(dot);
         
         // Set up label editing
@@ -306,17 +307,6 @@ function createNewDot(savedDot: SavedDot, xyPlane: HTMLElement) {
                 createLabelEditor(labelElement, dot);
             }, 0);
         }
-
-        // Fire creation event
-        const createAction = {
-            type: 'create' as const,
-            dotId: savedDot.id,
-            newState: savedDot
-        };
-        document.dispatchEvent(new CustomEvent('dotCreated', {
-            bubbles: true,
-            detail: createAction
-        }));
 
         // Verify final structure
         const finalMeasurements = {
@@ -353,7 +343,6 @@ function createNewDot(savedDot: SavedDot, xyPlane: HTMLElement) {
     }
 }
 
-// Update the updateConnectingLine function in utils.ts
 function updateConnectingLine(dot: HTMLElement) {
     const line = dot.querySelector('.connecting-line') as HTMLElement;
     const labelContainer = dot.querySelector('.label-container') as HTMLElement;
@@ -364,29 +353,30 @@ function updateConnectingLine(dot: HTMLElement) {
         return;
     }
 
-    // Get dimensions before any transforms
-    const originalLabelBox = labelContainer.getBoundingClientRect();
-    const originalDotBox = dotElement.getBoundingClientRect();
+    // Force layout calculation to ensure accurate measurements
+    dot.offsetHeight;
+    labelContainer.offsetHeight;
+
+    // Get dimensions after layout is complete
+    const labelBox = labelContainer.getBoundingClientRect();
+    const dotBox = dotElement.getBoundingClientRect();
     const containerRect = dot.getBoundingClientRect();
     
     // Calculate center points
-    const dotCenterX = originalDotBox.left - containerRect.left + originalDotBox.width / 2;
-    const dotCenterY = originalDotBox.top - containerRect.top + originalDotBox.height / 2;
-    const labelCenterY = originalLabelBox.top - containerRect.top + originalLabelBox.height / 2;
-    
-    // Connect to left edge of label at vertical center
-    const labelLeftX = originalLabelBox.left - containerRect.left;
+    const dotCenterX = dotBox.left - containerRect.left + dotBox.width / 2;
+    const dotCenterY = dotBox.top - containerRect.top + dotBox.height / 2;
+    const labelCenterY = labelBox.top - containerRect.top + labelBox.height / 2;
+    const labelLeftX = labelBox.left - containerRect.left;
 
     const dx = labelLeftX - dotCenterX;
     const dy = labelCenterY - dotCenterY;
     const angle = Math.atan2(dy, dx) * (180 / Math.PI);
     const length = Math.sqrt(dx * dx + dy * dy);
 
-    console.log('Line recalculation:', {
+    console.log('Line calculation:', {
         measurements: {
             dotCenter: { x: dotCenterX, y: dotCenterY },
-            labelLeft: labelLeftX,
-            labelCenterY,
+            labelCenter: { x: labelLeftX, y: labelCenterY },
             dx,
             dy,
             angle,
@@ -395,53 +385,38 @@ function updateConnectingLine(dot: HTMLElement) {
     });
 
     try {
+        // Update line properties in a single operation
         Object.assign(line.style, {
             position: 'absolute',
             width: `${length}px`,
             height: '1px',
+            top: '50%',
+            left: '50%',
             transform: `rotate(${angle}deg)`,
+            transformOrigin: 'left center',
             backgroundColor: LABEL_CONNECTION.LINE_COLOR,
             borderTop: `${LABEL_CONNECTION.LINE_WIDTH}px solid ${LABEL_CONNECTION.LINE_COLOR}`,
             display: 'block',
-            visibility: 'visible',
             zIndex: '1',
             pointerEvents: 'none'
         });
 
         dot.setAttribute('data-line-length', length.toString());
         dot.setAttribute('data-line-angle', angle.toString());
-        line.classList.add('active-line');
-
-        const finalLineBox = line.getBoundingClientRect();
-        if (finalLineBox.width === 0 || finalLineBox.height === 0) {
-            console.warn('Invalid line dimensions:', {
-                width: finalLineBox.width,
-                height: finalLineBox.height,
-                styles: {
-                    transform: line.style.transform,
-                    width: line.style.width,
-                    display: line.style.display
-                }
-            });
-            
-            // Force redraw
-            line.style.display = 'none';
-            line.offsetHeight;
-            line.style.display = 'block';
-        }
 
         // Verify final positioning
+        const finalLineBox = line.getBoundingClientRect();
         console.log('Final line state:', {
             dotId: dot.getAttribute('data-dot-id'),
             dimensions: {
-                width: line.offsetWidth,
-                height: line.offsetHeight
+                width: finalLineBox.width,
+                height: finalLineBox.height
             },
             styles: {
                 transform: line.style.transform,
                 width: line.style.width,
-                display: line.style.display,
-                visibility: line.style.visibility
+                top: line.style.top,
+                left: line.style.left
             },
             labelPosition: {
                 left: labelContainer.style.left,
@@ -453,10 +428,7 @@ function updateConnectingLine(dot: HTMLElement) {
         console.error('Error updating connecting line:', {
             error: error instanceof Error ? error.message : 'Unknown error',
             dot: dot.getAttribute('data-dot-id'),
-            measurements: {
-                length,
-                angle
-            }
+            measurements: { length, angle }
         });
     }
 }
