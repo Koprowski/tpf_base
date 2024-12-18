@@ -792,16 +792,9 @@ function handleMultiDotSelection(event) {
         // Apply appropriate selection states
         dots.forEach(function (dot) {
             if (selectedDots.has(dot)) {
-                // If multiple dots are selected or being selected, use multi-selected
-                if (selectedDots.size > 1) {
-                    dot.classList.remove('selected');
-                    dot.classList.add('multi-selected');
-                }
-                else {
-                    // Single dot selection
-                    dot.classList.add('selected');
-                    dot.classList.remove('multi-selected');
-                }
+                // Always use multi-selected for drag box selection
+                dot.classList.remove('selected');
+                dot.classList.add('multi-selected');
             }
             else if (!moveEvent.shiftKey) {
                 // Clear selection for unselected dots
@@ -819,23 +812,13 @@ function handleMultiDotSelection(event) {
         var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
         var dotsArray = Array.from(selectedDots);
         if (dotsArray.length > 0) {
-            // If we have multiple dots, ensure they're all in multi-selected state
-            if (dotsArray.length > 1) {
-                dotsArray.forEach(function (dot) {
-                    dot.classList.remove('selected');
-                    dot.classList.add('multi-selected');
-                    adjustHoverBox(dot);
-                    adjustSelectedBox(dot);
-                });
-            }
-            else {
-                // Single dot should be in selected state
-                var dot = dotsArray[0];
-                dot.classList.add('selected');
-                dot.classList.remove('multi-selected');
+            // Always keep dots in multi-selected state when using drag box
+            dotsArray.forEach(function (dot) {
+                dot.classList.remove('selected');
+                dot.classList.add('multi-selected');
                 adjustHoverBox(dot);
                 adjustSelectedBox(dot);
-            }
+            });
             // Update tpf.selectedDot
             tpf.selectedDot = dotsArray[dotsArray.length - 1];
         }
