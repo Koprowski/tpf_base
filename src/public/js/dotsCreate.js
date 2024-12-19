@@ -54,13 +54,9 @@ function dotsCreate() {
     if (!xyPlane)
         return;
     xyPlane.addEventListener('click', function (e) {
-        console.log('=== xyPlane click event triggered ===');
-        console.log('Event properties:', {
+        console.log('XYPlane click:', {
             target: e.target,
-            currentTarget: e.currentTarget,
             defaultPrevented: e.defaultPrevented,
-            eventPhase: e.eventPhase,
-            bubbles: e.bubbles,
             cancelBubble: e.cancelBubble
         });
         console.log('Current dot states:', {
@@ -389,16 +385,6 @@ function updateConnectingLine(dot) {
     var dy = labelCenterY - dotCenterY;
     var angle = Math.atan2(dy, dx) * (180 / Math.PI);
     var length = Math.sqrt(dx * dx + dy * dy);
-    console.log('Line calculation:', {
-        measurements: {
-            dotCenter: { x: dotCenterX, y: dotCenterY },
-            labelCenter: { x: labelLeftX, y: labelCenterY },
-            dx: dx,
-            dy: dy,
-            angle: angle,
-            length: length
-        }
-    });
     try {
         // Update line properties in a single operation
         Object.assign(line.style, {
@@ -419,23 +405,6 @@ function updateConnectingLine(dot) {
         dot.setAttribute('data-line-angle', angle.toString());
         // Verify final positioning
         var finalLineBox = line.getBoundingClientRect();
-        console.log('Final line state:', {
-            dotId: dot.getAttribute('data-dot-id'),
-            dimensions: {
-                width: finalLineBox.width,
-                height: finalLineBox.height
-            },
-            styles: {
-                transform: line.style.transform,
-                width: line.style.width,
-                top: line.style.top,
-                left: line.style.left
-            },
-            labelPosition: {
-                left: labelContainer.style.left,
-                top: labelContainer.style.top
-            }
-        });
     }
     catch (error) {
         console.error('Error updating connecting line:', {

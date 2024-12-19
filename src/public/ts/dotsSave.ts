@@ -21,30 +21,14 @@ function collectDots(): Array<Dot> {
     const dotContainers = document.querySelectorAll('.dot-container');
     
     log('Found dot containers');
-    console.log('Found dot containers:', dotContainers.length);
-    console.log('Starting dot collection process');
-
+    
     dotContainers.forEach((container: Element) => {
         try {
             const dotEl = container as HTMLElement;
             const labelEl = dotEl.querySelector('.user-dot-label');
             const coordsEl = dotEl.querySelector('.dot-coordinates');
             const labelContainer = dotEl.querySelector('.label-container') as HTMLElement;
-            const line = dotEl.querySelector('.connecting-line') as HTMLElement;
-            
-            console.log('Collecting dot state:', {
-                id: dotEl.getAttribute('data-dot-id'),
-                position: {
-                    left: dotEl.style.left,
-                    top: dotEl.style.top
-                },
-                elements: {
-                    labelContainer: !!labelContainer,
-                    line: !!line,
-                    coordsEl: !!coordsEl
-                }
-            });
-            
+            const line = dotEl.querySelector('.connecting-line') as HTMLElement;            
             const computedStyle = window.getComputedStyle(dotEl);
             const left = dotEl.style.left || computedStyle.left;
             const top = dotEl.style.top || computedStyle.top;
@@ -54,11 +38,6 @@ function collectDots(): Array<Dot> {
                 return;
             }
             
-            console.log('Processing label container:', {
-                exists: !!labelContainer,
-                element: labelContainer,
-                parentNode: labelContainer?.parentNode
-            });
 
             const defaultLabelOffset = {
                 x: LABEL_CONNECTION.DEFAULT_LENGTH as number,
@@ -74,14 +53,12 @@ function collectDots(): Array<Dot> {
                 
                 if (!isNaN(leftValue)) {
                     labelOffset.x = leftValue;
-                    console.log('Valid left offset:', leftValue);
                 } else {
                     console.warn('Invalid left offset, using default:', LABEL_CONNECTION.DEFAULT_LENGTH);
                 }
                 
                 if (!isNaN(topValue)) {
                     labelOffset.y = topValue;
-                    console.log('Valid top offset:', topValue);
                 } else {
                     console.warn('Invalid top offset, using default:', -LABEL_CONNECTION.DEFAULT_LENGTH / Math.sqrt(2));
                 }
@@ -92,22 +69,11 @@ function collectDots(): Array<Dot> {
                     const parsedAngle = parseFloat(angleMatch[1]);
                     if (!isNaN(parsedAngle)) {
                         lineAngle = parsedAngle;
-                        console.log('Extracted line angle:', lineAngle);
                     }
                 } else {
                     console.warn('Could not extract line angle, using default:', lineAngle);
                 }
             }
-
-            console.log('Label container position details:', {
-                element: labelContainer,
-                leftStyle: labelContainer?.style.left,
-                topStyle: labelContainer?.style.top,
-                computedOffset: labelOffset,
-                rawLeft: labelContainer?.style.left,
-                rawTop: labelContainer?.style.top,
-                lineAngle
-            });
 
             let lineLength = parseFloat(dotEl.getAttribute('data-line-length') || '');
             if (isNaN(lineLength)) {
@@ -117,15 +83,6 @@ function collectDots(): Array<Dot> {
                 console.log('Using stored line length:', lineLength);
             }
             
-            console.log('Line length calculation details:', {
-                dataAttribute: dotEl.getAttribute('data-line-length'),
-                calculated: Math.sqrt(labelOffset.x * labelOffset.x + labelOffset.y * labelOffset.y),
-                final: lineLength,
-                isValid: !isNaN(lineLength),
-                angle: lineAngle,
-                transform: line?.style.transform
-            });
-
             const dotData: Dot = {
                 x: left,
                 y: top,
@@ -162,23 +119,6 @@ function collectDots(): Array<Dot> {
                     }
                 });
             }
-
-            console.log('Complete dot data for saving:', {
-                dotData,
-                validationIssues,
-                isValid: validationIssues.length === 0,
-                elementDetails: {
-                    hasLabel: !!labelEl,
-                    hasCoords: !!coordsEl,
-                    hasContainer: !!labelContainer,
-                    hasLine: !!line
-                },
-                styles: {
-                    transform: line?.style.transform,
-                    labelLeft: labelContainer?.style.left,
-                    labelTop: labelContainer?.style.top
-                }
-            });
 
             dots.push(dotData);
 

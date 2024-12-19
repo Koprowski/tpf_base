@@ -402,18 +402,7 @@ function updateConnectingLine(dot: HTMLElement) {
     const dy = labelCenterY - dotCenterY;
     const angle = Math.atan2(dy, dx) * (180 / Math.PI);
     const length = Math.sqrt(dx * dx + dy * dy);
-
-    console.log('Line calculation:', {
-        measurements: {
-            dotCenter: { x: dotCenterX, y: dotCenterY },
-            labelCenter: { x: labelLeftX, y: labelCenterY },
-            dx,
-            dy,
-            angle,
-            length
-        }
-    });
-
+    
     try {
         // Update line properties in a single operation
         Object.assign(line.style, {
@@ -436,24 +425,7 @@ function updateConnectingLine(dot: HTMLElement) {
 
         // Verify final positioning
         const finalLineBox = line.getBoundingClientRect();
-        console.log('Final line state:', {
-            dotId: dot.getAttribute('data-dot-id'),
-            dimensions: {
-                width: finalLineBox.width,
-                height: finalLineBox.height
-            },
-            styles: {
-                transform: line.style.transform,
-                width: line.style.width,
-                top: line.style.top,
-                left: line.style.left
-            },
-            labelPosition: {
-                left: labelContainer.style.left,
-                top: labelContainer.style.top
-            }
-        });
-
+        
     } catch (error) {
         console.error('Error updating connecting line:', {
             error: error instanceof Error ? error.message : 'Unknown error',
