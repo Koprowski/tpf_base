@@ -119,6 +119,18 @@ function getAllDots() {
 }
 document.addEventListener('keydown', function (event) {
     console.log('handleKeyboardMovement triggered');
+    // Handle Escape key
+    if (event.key === 'Escape') {
+        var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+        selectedDots.forEach(function (dot) {
+            dot.classList.remove('selected');
+            dot.classList.remove('multi-selected');
+            adjustHoverBox(dot);
+            adjustSelectedBox(dot);
+        });
+        tpf.selectedDot = null;
+        return;
+    }
     // Handle movement keys
     handleKeyboardMovement(event);
     // Handle delete key

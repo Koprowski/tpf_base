@@ -83,10 +83,25 @@ function getAllDots() {
 
 document.addEventListener('keydown', (event) => {
     console.log('handleKeyboardMovement triggered');
+    
+    // Handle Escape key
+    if (event.key === 'Escape') {
+        const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+        selectedDots.forEach((dot) => {
+            dot.classList.remove('selected');
+            dot.classList.remove('multi-selected');
+            adjustHoverBox(dot as HTMLElement);
+            adjustSelectedBox(dot as HTMLElement);
+        });
+        tpf.selectedDot = null;
+        return;
+    }
+    
     // Handle movement keys
     handleKeyboardMovement(event);
     // Handle delete key
-    handleKeyboardDelete(event);});
+    handleKeyboardDelete(event);
+});
 
 // Centralized state for dot positions
 interface DotState {
