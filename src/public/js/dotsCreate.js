@@ -54,9 +54,39 @@ function dotsCreate() {
     if (!xyPlane)
         return;
     xyPlane.addEventListener('click', function (e) {
+        console.log('=== xyPlane click event triggered ===');
+        console.log('Event properties:', {
+            target: e.target,
+            currentTarget: e.currentTarget,
+            defaultPrevented: e.defaultPrevented,
+            eventPhase: e.eventPhase,
+            bubbles: e.bubbles,
+            cancelBubble: e.cancelBubble
+        });
+        console.log('Current dot states:', {
+            selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            isDragging: tpf.isDragging,
+            isSelecting: isSelecting,
+            skipGraphClick: tpf.skipGraphClick,
+            currentDot: tpf.currentDot ? true : false,
+            eventPreventDefault: e.defaultPrevented,
+            eventPropagationStopped: e.cancelBubble
+        });
+        // Return early if event was already handled
+        if (e.defaultPrevented) {
+            console.log('Event was already handled, returning early');
+            return;
+        }
         // Handle dot selection/deselection
         var target = e.target;
         var dotContainer = findDotContainer(target);
+        var hasSelectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length > 0;
+        if (hasSelectedDots && target === xyPlane) {
+            console.log('Selected dots exist and clicking xy-plane - preventing creation');
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
         // If we clicked on a dot
         if (dotContainer && !dotContainer.classList.contains('editing')) {
             // If clicking on the currently selected dot, deselect it

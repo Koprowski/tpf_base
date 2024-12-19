@@ -3,11 +3,11 @@
 type LogCategory = 'dots' | 'mouse' | 'keyboard' | 'general' | 'debug';
 
 const ENABLED_CATEGORIES: LogCategory[] = [
-    'mouse',
-    'keyboard',
-    'debug',
+    //'mouse',
+    //'keyboard',
+    //'debug',
     //'general',
-    'dots'  // Enable all categories for debugging
+    //'dots'  // Enable all categories for debugging
 ];
 
 export default function log(message: string, category: LogCategory = 'general', ...args: any[]) {

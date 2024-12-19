@@ -229,20 +229,20 @@ export function dotsSave(dots) {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    log('saveDots');
+                    log('Saving dots', 'dots');
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 6, , 7]);
                     urlParts = window.location.pathname.split('/');
                     if (urlParts.length <= 2 || urlParts[1] === '') {
-                        console.log('Skipping save - on homepage');
+                        log('Skipping save - on homepage', 'dots');
                         return [2 /*return*/];
                     }
                     urlId = urlParts[urlParts.length - 1];
                     dotsToSave = dots.length === 0 ? collectDots() : dots;
-                    console.log('Pre-save state:', JSON.stringify(dotsToSave, null, 2));
+                    log('Pre-save state:', 'dots', JSON.stringify(dotsToSave, null, 2));
                     if (dotsToSave.length === 0) {
-                        console.log('No dots to save');
+                        log('No dots to save', 'dots');
                         return [2 /*return*/];
                     }
                     processedDots = dotsToSave.map(function (dot) {
@@ -255,7 +255,7 @@ export function dotsSave(dots) {
                         var gridX = coordMatch ? parseFloat(coordMatch[1]) : 0;
                         var gridY = coordMatch ? parseFloat(coordMatch[2]) : 0;
                         if (isNaN(x) || isNaN(y) || isNaN(gridX) || isNaN(gridY)) {
-                            console.warn('Invalid coordinate values:', {
+                            log('Invalid coordinate values:', 'dots', {
                                 x: x,
                                 y: y,
                                 gridX: gridX,
@@ -273,10 +273,10 @@ export function dotsSave(dots) {
                         if (!lineLength || isNaN(lineLength)) {
                             lineLength = Math.sqrt(Math.pow(labelOffset.x, 2) +
                                 Math.pow(labelOffset.y, 2));
-                            console.log('Calculated missing line length:', lineLength);
+                            log('Calculated missing line length:', 'dots', lineLength);
                         }
                         // Log validation details
-                        console.log('Processing dot:', {
+                        log('Processing dot:', 'dots', {
                             originalState: dot,
                             processedValues: {
                                 x: x,
@@ -295,8 +295,8 @@ export function dotsSave(dots) {
                             lineLength: lineLength
                         };
                     });
-                    console.log('Sending dots to API:', JSON.stringify(processedDots));
-                    console.log('Pre-save state:', JSON.stringify(processedDots, null, 2));
+                    log('Sending dots to API:', 'dots', JSON.stringify(processedDots));
+                    log('Pre-save state:', 'dots', JSON.stringify(processedDots, null, 2));
                     return [4 /*yield*/, fetch("/api/pages/".concat(urlId, "/dots"), {
                             method: 'POST',
                             headers: {
@@ -311,7 +311,7 @@ export function dotsSave(dots) {
                     return [4 /*yield*/, response.text()];
                 case 3:
                     errorText = _a.sent();
-                    console.error('Server error details:', {
+                    log('Server error details:', 'dots', {
                         status: response.status,
                         statusText: response.statusText,
                         responseBody: errorText,
@@ -321,13 +321,13 @@ export function dotsSave(dots) {
                 case 4: return [4 /*yield*/, response.json()];
                 case 5:
                     result = _a.sent();
-                    console.log('Save successful:', JSON.stringify(result, null, 2));
+                    log('Save successful:', 'dots', JSON.stringify(result, null, 2));
                     return [2 /*return*/, result];
                 case 6:
                     error_1 = _a.sent();
-                    console.error('Save error:', error_1);
+                    log('Save error:', 'dots', error_1);
                     if (error_1 instanceof Error) {
-                        console.error('Error details:', {
+                        log('Error details:', 'dots', {
                             message: error_1.message,
                             stack: error_1.stack,
                             type: error_1.name

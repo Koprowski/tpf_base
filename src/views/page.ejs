@@ -123,9 +123,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const dots = getAllDots();
         const urlId = urlParts[urlParts.length - 1];
 
-        // Enhanced logging of raw dots data
-        console.log('Raw dots before processing:', dots);
-
         // Format dots to match API expectations with enhanced validation
         const formattedDots = dots.map(dot => {
             let xValue, yValue;
@@ -173,11 +170,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 lineAngle: -45
             };
 
-            console.log('Processed dot:', formattedDot);
             return formattedDot;
         });
-
-        console.log('Formatted dots for API:', formattedDots);
 
         const response = await fetch(`/api/pages/${urlId}/dots`, {
             method: 'POST',
@@ -223,12 +217,6 @@ function getAllDots() {
     }
     
     const xyPlaneRect = xyPlane.getBoundingClientRect();
-    console.log('XY Plane dimensions:', {
-        width: xyPlaneRect.width,
-        height: xyPlaneRect.height,
-        left: xyPlaneRect.left,
-        top: xyPlaneRect.top
-    });
     
     dotElements.forEach((dotContainer, index) => {
         try {
@@ -247,15 +235,7 @@ function getAllDots() {
             // Get elements
             const labelElement = dotContainer.querySelector('.user-dot-label');
             const coordsElement = dotContainer.querySelector('.dot-coordinates');
-            
-            // Log element presence
-            console.log(`Dot ${index} elements:`, {
-                hasLabel: !!labelElement,
-                hasCoords: !!coordsElement,
-                position: { relativeLeft, relativeTop },
-                calculated: { x, y }
-            });
-            
+                       
             // Create dot object with enhanced validation
             const dot = {
                 x: relativeLeft,

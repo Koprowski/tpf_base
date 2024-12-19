@@ -210,22 +210,22 @@ function collectDots(): Array<Dot> {
 }
 
 export async function dotsSave(dots: Dot[]) {
-    log('saveDots');
+    log('Saving dots', 'dots');
     
     try {
         const urlParts = window.location.pathname.split('/');
         if (urlParts.length <= 2 || urlParts[1] === '') {
-            console.log('Skipping save - on homepage');
+            log('Skipping save - on homepage', 'dots');
             return;
         }
 
         const urlId = urlParts[urlParts.length - 1];
         const dotsToSave = dots.length === 0 ? collectDots() : dots;
         
-        console.log('Pre-save state:', JSON.stringify(dotsToSave, null, 2));
+        log('Pre-save state:', 'dots', JSON.stringify(dotsToSave, null, 2));
 
         if (dotsToSave.length === 0) {
-            console.log('No dots to save');
+            log('No dots to save', 'dots');
             return;
         }
 
@@ -241,7 +241,7 @@ export async function dotsSave(dots: Dot[]) {
             const gridY = coordMatch ? parseFloat(coordMatch[2]) : 0;
 
             if (isNaN(x) || isNaN(y) || isNaN(gridX) || isNaN(gridY)) {
-                console.warn('Invalid coordinate values:', {
+                log('Invalid coordinate values:', 'dots', {
                     x, y, gridX, gridY,
                     raw: { x: dot.x, y: dot.y, coordinates: dot.coordinates }
                 });
@@ -260,11 +260,11 @@ export async function dotsSave(dots: Dot[]) {
                     Math.pow(labelOffset.x, 2) + 
                     Math.pow(labelOffset.y, 2)
                 );
-                console.log('Calculated missing line length:', lineLength);
+                log('Calculated missing line length:', 'dots', lineLength);
             }
 
             // Log validation details
-            console.log('Processing dot:', {
+            log('Processing dot:', 'dots', {
                 originalState: dot,
                 processedValues: {
                     x, y,
@@ -284,8 +284,8 @@ export async function dotsSave(dots: Dot[]) {
             };
         });
 
-        console.log('Sending dots to API:', JSON.stringify(processedDots));
-        console.log('Pre-save state:', JSON.stringify(processedDots, null, 2));
+        log('Sending dots to API:', 'dots', JSON.stringify(processedDots));
+        log('Pre-save state:', 'dots', JSON.stringify(processedDots, null, 2));
 
         const response = await fetch(`/api/pages/${urlId}/dots`, {
             method: 'POST',
@@ -298,7 +298,7 @@ export async function dotsSave(dots: Dot[]) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Server error details:', {
+            log('Server error details:', 'dots', {
                 status: response.status,
                 statusText: response.statusText,
                 responseBody: errorText,
@@ -308,14 +308,14 @@ export async function dotsSave(dots: Dot[]) {
         }
 
         const result = await response.json();
-        console.log('Save successful:', JSON.stringify(result, null, 2));
+        log('Save successful:', 'dots', JSON.stringify(result, null, 2));
 
         return result;
 
     } catch (error) {
-        console.error('Save error:', error);
+        log('Save error:', 'dots', error);
         if (error instanceof Error) {
-            console.error('Error details:', {
+            log('Error details:', 'dots', {
                 message: error.message,
                 stack: error.stack,
                 type: error.name

@@ -9,11 +9,11 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 var ENABLED_CATEGORIES = [
-    'mouse',
-    'keyboard',
-    'debug',
-    //'general',
-    'dots' // Enable all categories for debugging
+//'mouse',
+//'keyboard',
+//'debug',
+//'general',
+//'dots'  // Enable all categories for debugging
 ];
 export default function log(message, category) {
     if (category === void 0) { category = 'general'; }

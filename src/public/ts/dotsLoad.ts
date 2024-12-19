@@ -250,7 +250,6 @@ function adjustHoverBox(dotContainer: HTMLElement) {
 }
 
 function initializeDotFromSaved(savedDot: SavedDot): HTMLDivElement {
-    console.log('Initializing dot from saved data:', savedDot);
     return loadSavedDots(savedDot);
 }
 
@@ -297,7 +296,7 @@ async function dotsLoad() {
             }
 
             const urlId = urlParts[urlParts.length - 1];
-            console.log('Loading dots for URL ID:', urlId);
+            log(`Loading dots for URL ID: ${urlId}`, 'dots');
 
             const response = await fetch(`/api/pages/${urlId}/dots`, {
                 method: 'GET',
@@ -315,7 +314,7 @@ async function dotsLoad() {
             const data = await response.json();
             
             const dots = Array.isArray(data) ? data : (data.dots || []);
-            console.log('Processed dots array from server:', JSON.stringify(dots, null, 2));
+            log('Processed dots array from server:', 'dots', JSON.stringify(dots, null, 2));
 
             const xyPlane = document.getElementById('xy-plane');
             if (!xyPlane) {
@@ -326,7 +325,6 @@ async function dotsLoad() {
             Array.from(existingDots).forEach(dot => dot.remove());
 
             dots.forEach((dot: SavedDot) => {
-                
                 try {
                     // Process incoming dot data
                     const processedDot = {
@@ -353,7 +351,7 @@ async function dotsLoad() {
                     };
 
                     if (!validation.hasLabel || !validation.hasCoords || !validation.hasLine) {
-                        console.warn('Dot missing required elements:', validation);
+                        log('Dot missing required elements:', 'dots', validation);
                     }
 
                     // Check position values
@@ -363,14 +361,14 @@ async function dotsLoad() {
                     };
 
                     if (!position.left || !position.top) {
-                        console.warn('Invalid dot position:', position);
+                        log('Invalid dot position:', 'dots', position);
                     }
 
                 } catch (error) {
-                    console.error('Error creating individual dot:', error);
-                    console.error('Failed dot data:', dot);
+                    log('Error creating individual dot:', 'dots', error);
+                    log('Failed dot data:', 'dots', dot);
                     if (error instanceof Error) {
-                        console.error('Creation error details:', {
+                        log('Creation error details:', 'dots', {
                             message: error.message,
                             stack: error.stack
                         });
@@ -381,11 +379,11 @@ async function dotsLoad() {
             return;
 
         } catch (error) {
-            console.error(`Attempt ${retryCount + 1} failed:`, error);
+            log(`Attempt ${retryCount + 1} failed:`, 'dots', error);
             retryCount++;
             
             if (retryCount === MAX_RETRIES) {
-                console.error('Failed to load dots after maximum retries');
+                log('Failed to load dots after maximum retries', 'dots');
                 return;
             }
             

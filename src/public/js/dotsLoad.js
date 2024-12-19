@@ -244,7 +244,6 @@ function adjustHoverBox(dotContainer) {
     debouncedAdjustHover(dotContainer);
 }
 function initializeDotFromSaved(savedDot) {
-    console.log('Initializing dot from saved data:', savedDot);
     return loadSavedDots(savedDot);
 }
 function waitForXYPlane() {
@@ -295,7 +294,7 @@ function dotsLoad() {
                                         return [2 /*return*/, { value: void 0 }];
                                     }
                                     urlId = urlParts[urlParts.length - 1];
-                                    console.log('Loading dots for URL ID:', urlId);
+                                    log("Loading dots for URL ID: ".concat(urlId), 'dots');
                                     return [4 /*yield*/, fetch("/api/pages/".concat(urlId, "/dots"), {
                                             method: 'GET',
                                             headers: {
@@ -313,7 +312,7 @@ function dotsLoad() {
                                 case 2:
                                     data = _b.sent();
                                     dots = Array.isArray(data) ? data : (data.dots || []);
-                                    console.log('Processed dots array from server:', JSON.stringify(dots, null, 2));
+                                    log('Processed dots array from server:', 'dots', JSON.stringify(dots, null, 2));
                                     xyPlane_1 = document.getElementById('xy-plane');
                                     if (!xyPlane_1) {
                                         throw new Error('XY Plane not found');
@@ -335,7 +334,7 @@ function dotsLoad() {
                                                 hasLine: !!dotElement.querySelector('.connecting-line')
                                             };
                                             if (!validation.hasLabel || !validation.hasCoords || !validation.hasLine) {
-                                                console.warn('Dot missing required elements:', validation);
+                                                log('Dot missing required elements:', 'dots', validation);
                                             }
                                             // Check position values
                                             var position = {
@@ -343,14 +342,14 @@ function dotsLoad() {
                                                 top: dotElement.style.top
                                             };
                                             if (!position.left || !position.top) {
-                                                console.warn('Invalid dot position:', position);
+                                                log('Invalid dot position:', 'dots', position);
                                             }
                                         }
                                         catch (error) {
-                                            console.error('Error creating individual dot:', error);
-                                            console.error('Failed dot data:', dot);
+                                            log('Error creating individual dot:', 'dots', error);
+                                            log('Failed dot data:', 'dots', dot);
                                             if (error instanceof Error) {
-                                                console.error('Creation error details:', {
+                                                log('Creation error details:', 'dots', {
                                                     message: error.message,
                                                     stack: error.stack
                                                 });
@@ -360,10 +359,10 @@ function dotsLoad() {
                                     return [2 /*return*/, { value: void 0 }];
                                 case 3:
                                     error_1 = _b.sent();
-                                    console.error("Attempt ".concat(retryCount + 1, " failed:"), error_1);
+                                    log("Attempt ".concat(retryCount + 1, " failed:"), 'dots', error_1);
                                     retryCount++;
                                     if (retryCount === MAX_RETRIES) {
-                                        console.error('Failed to load dots after maximum retries');
+                                        log('Failed to load dots after maximum retries', 'dots');
                                         return [2 /*return*/, { value: void 0 }];
                                     }
                                     return [4 /*yield*/, new Promise(function (resolve) { return setTimeout(resolve, Math.pow(2, retryCount) * 1000); })];

@@ -430,7 +430,56 @@ function handleKeyboardDelete(event: KeyboardEvent) {
 function mouseDown(event: MouseEvent) {
     log('mouseDown');
     const target = event.target as HTMLElement;
+    const xyPlane = document.getElementById('xy-plane');
+    if (!xyPlane) return;
+
+    console.log('MouseDown event:', {
+        target: event.target,
+        targetType: (event.target as HTMLElement).className,
+        isXYPlane: event.target === xyPlane
+    });
     
+    console.log('Selection state:', {
+        selectedCount: document.querySelectorAll('.dot-container.selected').length,
+        multiSelectedCount: document.querySelectorAll('.dot-container.multi-selected').length,
+        isShiftPressed: event.shiftKey,
+        isDragging: tpf.isDragging,
+        isSelecting,
+        currentDot: tpf.currentDot?.getAttribute('data-dot-id') || null
+    });
+
+    // Get any currently selected dots
+    const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+    const hasSelectedDots = selectedDots.length > 0;
+
+    // If clicking on xy-plane and dots are selected, handle deselection first
+    if (target === xyPlane && (hasSelectedDots || tpf.selectedDot)) {
+        console.log('=== Deselecting dots ===');
+        // Stop all event handling first
+        event.stopImmediatePropagation(); // This prevents all other handlers from firing
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Deselect all dots
+        selectedDots.forEach(dot => {
+            dot.classList.remove('selected');
+            dot.classList.remove('multi-selected');
+            adjustHoverBox(dot as HTMLElement);
+            adjustSelectedBox(dot as HTMLElement);
+        });
+        tpf.selectedDot = null;
+        tpf.isDragging = false;
+        tpf.currentDot = null;
+        tpf.skipGraphClick = true;
+        
+        // Set a timeout to reset skipGraphClick
+        setTimeout(() => {
+            tpf.skipGraphClick = false;
+        }, 0);
+
+        return;
+    }
+
     // Check if we clicked a dot or part of a dot container
     const dotContainer = findDotContainer(target);
     const isShiftKeyPressed = event.shiftKey;
@@ -438,6 +487,7 @@ function mouseDown(event: MouseEvent) {
     // Handle dot container clicks
     if (dotContainer && !dotContainer.classList.contains('editing') && !document.querySelector('.label-input:focus')) {
         event.preventDefault();
+        event.stopPropagation();
         
         // If shift key is not pressed, handle single selection
         if (!isShiftKeyPressed) {
@@ -454,8 +504,8 @@ function mouseDown(event: MouseEvent) {
             
             // Toggle selection on clicked dot
             const isCurrentlySelected = dotContainer.classList.contains('selected') || 
-                                      dotContainer.classList.contains('multi-selected');
-                                      
+                                     dotContainer.classList.contains('multi-selected');
+                                     
             if (isCurrentlySelected) {
                 dotContainer.classList.remove('selected');
                 dotContainer.classList.remove('multi-selected');
@@ -467,8 +517,14 @@ function mouseDown(event: MouseEvent) {
             }
         } else {
             // Shift key is pressed - handle multi-selection
+            console.log('Multi-select triggered:', {
+                existingSelections: document.querySelectorAll('.dot-container.multi-selected').length,
+                shiftKey: event.shiftKey,
+                targetIsDot: !!findDotContainer(event.target as HTMLElement)
+            });
+            
             const wasSelected = dotContainer.classList.contains('selected') || 
-                              dotContainer.classList.contains('multi-selected');
+                             dotContainer.classList.contains('multi-selected');
             
             if (wasSelected) {
                 dotContainer.classList.remove('selected');
@@ -499,14 +555,13 @@ function mouseDown(event: MouseEvent) {
         const rect = dotContainer.getBoundingClientRect();
         tpf.offsetX = event.clientX - rect.left;
         tpf.offsetY = event.clientY - rect.top;
-        return; // Exit after handling dot click
+        return;
     }
 
     // Handle xy-plane clicks (including multi-select)
-    const xyPlane = document.getElementById('xy-plane');
-    if (xyPlane && event.target === xyPlane) {
+    if (target === xyPlane) {
         if (!isShiftKeyPressed) {
-            // Clear selections on plain click, but allow multi-select to proceed
+            // Clear selections on plain click
             const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
             selectedDots.forEach((container) => {
                 container.classList.remove('selected');
@@ -517,8 +572,10 @@ function mouseDown(event: MouseEvent) {
             tpf.selectedDot = null;
         }
         
-        // Always try to handle multi-select when clicking on xy-plane
-        handleMultiDotSelection(event);
+        // Only handle multi-select if no dots were previously selected
+        if (!hasSelectedDots) {
+            handleMultiDotSelection(event);
+        }
     }
 }
 
@@ -567,8 +624,18 @@ function mouseMove(event: MouseEvent) {
         return;
     }
 
-    // Skip if we're not dragging or editing
-    if (!tpf.isDragging || tpf.currentDot?.classList.contains('editing')) return;
+    // Skip early if not doing anything
+    if (!tpf.isDragging || tpf.currentDot?.classList.contains('editing')) {
+        return;
+    }
+
+    // Only log when actually dragging dots
+    if (tpf.isDragging && tpf.currentDot) {
+        console.log('Moving dot(s):', {
+            selectedDots: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            isDragging: true
+        });
+    }
 
     const xyPlane = document.getElementById('xy-plane');
     if (!xyPlane) return;
@@ -619,16 +686,14 @@ function mouseMove(event: MouseEvent) {
                 coordsElement.textContent = `(${normalizedX.toFixed(1)}, ${normalizedY.toFixed(1)})`;
             }
 
-            // Update connecting line
             updateConnectingLine(dotEl);
 
-            // Update hover box if selected
             if (dotEl.classList.contains('selected')) {
                 adjustHoverBox(dotEl);
             }
         });
     } 
-    // Single dot movement (original behavior)
+    // Single dot movement
     else if (tpf.currentDot && isWithinBounds(newLeft, newTop, rect)) {
         const x = pixelToCoordinate(newLeft);
         const y = -pixelToCoordinate(newTop);

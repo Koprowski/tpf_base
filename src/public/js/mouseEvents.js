@@ -402,14 +402,59 @@ function handleKeyboardDelete(event) {
     }
 }
 function mouseDown(event) {
+    var _a;
     log('mouseDown');
     var target = event.target;
+    var xyPlane = document.getElementById('xy-plane');
+    if (!xyPlane)
+        return;
+    console.log('MouseDown event:', {
+        target: event.target,
+        targetType: event.target.className,
+        isXYPlane: event.target === xyPlane
+    });
+    console.log('Selection state:', {
+        selectedCount: document.querySelectorAll('.dot-container.selected').length,
+        multiSelectedCount: document.querySelectorAll('.dot-container.multi-selected').length,
+        isShiftPressed: event.shiftKey,
+        isDragging: tpf.isDragging,
+        isSelecting: isSelecting,
+        currentDot: ((_a = tpf.currentDot) === null || _a === void 0 ? void 0 : _a.getAttribute('data-dot-id')) || null
+    });
+    // Get any currently selected dots
+    var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+    var hasSelectedDots = selectedDots.length > 0;
+    // If clicking on xy-plane and dots are selected, handle deselection first
+    if (target === xyPlane && (hasSelectedDots || tpf.selectedDot)) {
+        console.log('=== Deselecting dots ===');
+        // Stop all event handling first
+        event.stopImmediatePropagation(); // This prevents all other handlers from firing
+        event.preventDefault();
+        event.stopPropagation();
+        // Deselect all dots
+        selectedDots.forEach(function (dot) {
+            dot.classList.remove('selected');
+            dot.classList.remove('multi-selected');
+            adjustHoverBox(dot);
+            adjustSelectedBox(dot);
+        });
+        tpf.selectedDot = null;
+        tpf.isDragging = false;
+        tpf.currentDot = null;
+        tpf.skipGraphClick = true;
+        // Set a timeout to reset skipGraphClick
+        setTimeout(function () {
+            tpf.skipGraphClick = false;
+        }, 0);
+        return;
+    }
     // Check if we clicked a dot or part of a dot container
     var dotContainer = findDotContainer(target);
     var isShiftKeyPressed = event.shiftKey;
     // Handle dot container clicks
     if (dotContainer && !dotContainer.classList.contains('editing') && !document.querySelector('.label-input:focus')) {
         event.preventDefault();
+        event.stopPropagation();
         // If shift key is not pressed, handle single selection
         if (!isShiftKeyPressed) {
             // Clear other selections
@@ -438,6 +483,11 @@ function mouseDown(event) {
         }
         else {
             // Shift key is pressed - handle multi-selection
+            console.log('Multi-select triggered:', {
+                existingSelections: document.querySelectorAll('.dot-container.multi-selected').length,
+                shiftKey: event.shiftKey,
+                targetIsDot: !!findDotContainer(event.target)
+            });
             var wasSelected = dotContainer.classList.contains('selected') ||
                 dotContainer.classList.contains('multi-selected');
             if (wasSelected) {
@@ -450,9 +500,9 @@ function mouseDown(event) {
                 tpf.selectedDot = dotContainer;
             }
             // Convert any single selections to multi-selections if we have multiple dots
-            var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
-            if (selectedDots.length > 1) {
-                selectedDots.forEach(function (dot) {
+            var selectedDots_1 = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+            if (selectedDots_1.length > 1) {
+                selectedDots_1.forEach(function (dot) {
                     dot.classList.remove('selected');
                     dot.classList.add('multi-selected');
                 });
@@ -466,15 +516,14 @@ function mouseDown(event) {
         var rect = dotContainer.getBoundingClientRect();
         tpf.offsetX = event.clientX - rect.left;
         tpf.offsetY = event.clientY - rect.top;
-        return; // Exit after handling dot click
+        return;
     }
     // Handle xy-plane clicks (including multi-select)
-    var xyPlane = document.getElementById('xy-plane');
-    if (xyPlane && event.target === xyPlane) {
+    if (target === xyPlane) {
         if (!isShiftKeyPressed) {
-            // Clear selections on plain click, but allow multi-select to proceed
-            var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
-            selectedDots.forEach(function (container) {
+            // Clear selections on plain click
+            var selectedDots_2 = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+            selectedDots_2.forEach(function (container) {
                 container.classList.remove('selected');
                 container.classList.remove('multi-selected');
                 adjustHoverBox(container);
@@ -482,8 +531,10 @@ function mouseDown(event) {
             });
             tpf.selectedDot = null;
         }
-        // Always try to handle multi-select when clicking on xy-plane
-        handleMultiDotSelection(event);
+        // Only handle multi-select if no dots were previously selected
+        if (!hasSelectedDots) {
+            handleMultiDotSelection(event);
+        }
     }
 }
 // Update findDotContainer to handle potential null cases more explicitly
@@ -525,9 +576,17 @@ function mouseMove(event) {
         handleLabelBoxDrag(event);
         return;
     }
-    // Skip if we're not dragging or editing
-    if (!tpf.isDragging || ((_a = tpf.currentDot) === null || _a === void 0 ? void 0 : _a.classList.contains('editing')))
+    // Skip early if not doing anything
+    if (!tpf.isDragging || ((_a = tpf.currentDot) === null || _a === void 0 ? void 0 : _a.classList.contains('editing'))) {
         return;
+    }
+    // Only log when actually dragging dots
+    if (tpf.isDragging && tpf.currentDot) {
+        console.log('Moving dot(s):', {
+            selectedDots: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            isDragging: true
+        });
+    }
     var xyPlane = document.getElementById('xy-plane');
     if (!xyPlane)
         return;
@@ -567,15 +626,13 @@ function mouseMove(event) {
             if (coordsElement) {
                 coordsElement.textContent = "(".concat(normalizedX.toFixed(1), ", ").concat(normalizedY.toFixed(1), ")");
             }
-            // Update connecting line
             updateConnectingLine(dotEl);
-            // Update hover box if selected
             if (dotEl.classList.contains('selected')) {
                 adjustHoverBox(dotEl);
             }
         });
     }
-    // Single dot movement (original behavior)
+    // Single dot movement
     else if (tpf.currentDot && isWithinBounds(newLeft, newTop, rect)) {
         var x = pixelToCoordinate(newLeft);
         var y = -pixelToCoordinate(newTop);
