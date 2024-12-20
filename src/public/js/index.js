@@ -68,15 +68,6 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             // Global click tracker
             document.addEventListener('click', function (e) {
-                console.log('=== Global click event captured ===');
-                console.log('Click event details:', {
-                    target: e.target,
-                    phase: e.eventPhase,
-                    defaultPrevented: e.defaultPrevented,
-                    bubbles: e.bubbles,
-                    cancelBubble: e.cancelBubble,
-                    selectedDots: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length
-                });
             }, true); // Use capture phase to see the event first
             // Create the tick marks first
             createTickMarks(xyPlane);

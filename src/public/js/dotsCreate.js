@@ -55,23 +55,8 @@ function dotsCreate() {
         return;
     var isDragging = false; // Flag to track dragging state
     xyPlane.addEventListener('mousedown', function (e) {
-        console.log('XYPlane mousedown:', {
-            target: e.target,
-            defaultPrevented: e.defaultPrevented,
-            cancelBubble: e.cancelBubble
-        });
-        console.log('Current dot states:', {
-            selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
-            isDragging: tpf.isDragging,
-            isSelecting: isSelecting,
-            skipGraphClick: tpf.skipGraphClick,
-            currentDot: tpf.currentDot ? true : false,
-            eventPreventDefault: e.defaultPrevented,
-            eventPropagationStopped: e.cancelBubble
-        });
         // Return early if event was already handled
         if (e.defaultPrevented) {
-            console.log('Event was already handled, returning early');
             return;
         }
         // Handle dot selection/deselection
@@ -79,7 +64,6 @@ function dotsCreate() {
         var dotContainer = findDotContainer(target);
         var hasSelectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length > 0;
         if (hasSelectedDots && target === xyPlane) {
-            console.log('Selected dots exist and clicking xy-plane - preventing creation');
             e.preventDefault();
             e.stopPropagation();
             return;
@@ -117,10 +101,6 @@ function dotsCreate() {
                 adjustHoverBox(dotContainer);
                 adjustSelectedBox(dotContainer);
             }
-            console.log('After handling dot selection/deselection:', {
-                selectedDot: tpf.selectedDot ? tpf.selectedDot.getAttribute('data-dot-id') : null,
-                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
-            });
             e.stopPropagation();
             return;
         }
@@ -136,19 +116,11 @@ function dotsCreate() {
             tpf.selectedDot.classList.remove('selected');
             adjustHoverBox(tpf.selectedDot);
             tpf.selectedDot = null;
-            console.log('After handling whitespace click with selected dot:', {
-                selectedDot: tpf.selectedDot ? tpf.selectedDot.getAttribute('data-dot-id') : null,
-                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
-            });
             e.stopPropagation();
             return;
         }
         // Only proceed to dot creation if we haven't handled a selection action
         if (!tpf.selectedDot) {
-            console.log('Proceeding to dot creation:', {
-                selectedDot: tpf.selectedDot ? tpf.selectedDot.getAttribute('data-dot-id') : null,
-                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
-            });
             xyPlaneClickHandler(e);
         }
     });
@@ -229,7 +201,6 @@ function dotsCreate() {
             }
         };
         if (isClickInsideGraph(graphCoords)) {
-            console.log('Click inside graph, checking tpf.currentDot:', tpf.currentDot);
             if (tpf.currentDot === null && !isDragging) {
                 try {
                     var dot_1 = loadSavedDots(savedDot);
@@ -271,11 +242,6 @@ function dotsCreate() {
 // Helper Dot Creation Function
 function createNewDot(savedDot, xyPlane) {
     var _a, _b, _c;
-    console.log('Creating new dot:', {
-        position: { x: savedDot.x, y: savedDot.y },
-        coordinates: savedDot.coordinates,
-        id: savedDot.id
-    });
     try {
         // Create container
         var dot_2 = document.createElement('div');
@@ -296,10 +262,6 @@ function createNewDot(savedDot, xyPlane) {
         // Calculate dot dimensions for centering
         var dotRect = dotElement.getBoundingClientRect();
         var dotRadius = dotRect.width / 2;
-        console.log('Dot element measurements:', {
-            rect: dotRect,
-            radius: dotRadius
-        });
         // Create label container first so we can measure it
         var labelContainer_1 = document.createElement('div');
         labelContainer_1.className = 'label-container';
@@ -370,19 +332,6 @@ function createNewDot(savedDot, xyPlane) {
             lineRect: line.getBoundingClientRect(),
             labelRect: labelContainer_1.getBoundingClientRect()
         };
-        console.log('Final dot verification:', {
-            id: dot_2.getAttribute('data-dot-id'),
-            position: {
-                left: dot_2.style.left,
-                top: dot_2.style.top
-            },
-            measurements: finalMeasurements,
-            lineProperties: {
-                length: dot_2.getAttribute('data-line-length'),
-                angle: dot_2.getAttribute('data-line-angle'),
-                transform: line.style.transform
-            }
-        });
         return dot_2;
     }
     catch (error) {

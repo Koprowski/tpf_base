@@ -26,25 +26,9 @@ function dotsCreate() {
     let isDragging = false; // Flag to track dragging state
 
     xyPlane.addEventListener('mousedown', (e) => {
-        console.log('XYPlane mousedown:', {
-            target: e.target,
-            defaultPrevented: e.defaultPrevented,
-            cancelBubble: e.cancelBubble
-        });
-    
-        console.log('Current dot states:', {
-            selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
-            isDragging: tpf.isDragging,
-            isSelecting,
-            skipGraphClick: tpf.skipGraphClick,
-            currentDot: tpf.currentDot ? true : false,
-            eventPreventDefault: e.defaultPrevented,
-            eventPropagationStopped: e.cancelBubble
-        });
     
         // Return early if event was already handled
         if (e.defaultPrevented) {
-            console.log('Event was already handled, returning early');
             return;
         }
     
@@ -54,7 +38,6 @@ function dotsCreate() {
         const hasSelectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length > 0;
     
         if (hasSelectedDots && target === xyPlane) {
-            console.log('Selected dots exist and clicking xy-plane - preventing creation');
     
             e.preventDefault();
             e.stopPropagation();
@@ -96,11 +79,6 @@ function dotsCreate() {
                 adjustSelectedBox(dotContainer);
             }
     
-            console.log('After handling dot selection/deselection:', {
-                selectedDot: tpf.selectedDot ? (tpf.selectedDot as HTMLElement).getAttribute('data-dot-id') : null,
-                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
-            });
-    
             e.stopPropagation();
             return;
         }
@@ -119,21 +97,12 @@ function dotsCreate() {
             adjustHoverBox(tpf.selectedDot);
             tpf.selectedDot = null;
     
-            console.log('After handling whitespace click with selected dot:', {
-                selectedDot: tpf.selectedDot ? (tpf.selectedDot as HTMLElement).getAttribute('data-dot-id') : null,
-                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
-            });
-    
             e.stopPropagation();
             return;
         }
     
         // Only proceed to dot creation if we haven't handled a selection action
         if (!tpf.selectedDot) {
-            console.log('Proceeding to dot creation:', {
-                selectedDot: tpf.selectedDot ? (tpf.selectedDot as HTMLElement).getAttribute('data-dot-id') : null,
-                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
-            });
             xyPlaneClickHandler(e);
         }
     });
@@ -227,8 +196,6 @@ function dotsCreate() {
 
         if (isClickInsideGraph(graphCoords)) {
             
-            console.log('Click inside graph, checking tpf.currentDot:', tpf.currentDot);
-
             if (tpf.currentDot === null && !isDragging) {
                 try {
                     const dot = loadSavedDots(savedDot);
@@ -274,11 +241,6 @@ function dotsCreate() {
 
 // Helper Dot Creation Function
 function createNewDot(savedDot: SavedDot, xyPlane: HTMLElement) {
-    console.log('Creating new dot:', {
-        position: { x: savedDot.x, y: savedDot.y },
-        coordinates: savedDot.coordinates,
-        id: savedDot.id
-    });
 
     try {
         // Create container
@@ -302,11 +264,6 @@ function createNewDot(savedDot: SavedDot, xyPlane: HTMLElement) {
         // Calculate dot dimensions for centering
         const dotRect = dotElement.getBoundingClientRect();
         const dotRadius = dotRect.width / 2;
-
-        console.log('Dot element measurements:', {
-            rect: dotRect,
-            radius: dotRadius
-        });
 
         // Create label container first so we can measure it
         const labelContainer = document.createElement('div');
@@ -394,20 +351,6 @@ function createNewDot(savedDot: SavedDot, xyPlane: HTMLElement) {
             lineRect: line.getBoundingClientRect(),
             labelRect: labelContainer.getBoundingClientRect()
         };
-
-        console.log('Final dot verification:', {
-            id: dot.getAttribute('data-dot-id'),
-            position: {
-                left: dot.style.left,
-                top: dot.style.top
-            },
-            measurements: finalMeasurements,
-            lineProperties: {
-                length: dot.getAttribute('data-line-length'),
-                angle: dot.getAttribute('data-line-angle'),
-                transform: line.style.transform
-            }
-        });
 
         return dot;
 
