@@ -946,4 +946,4 @@ function highlightSelectedDots(left, top, width, height) {
     console.log("Dots selected: ".concat(selectedDotsCount));
 }
 // SELECT and MOVE MULTIPLE DOTS END //
-export { tpf, mouseMove, mouseUp, mouseDown, adjustHoverBox, autosaveDots, debounce, throttle, handleKeyboardMovement, handleKeyboardDelete, isSelecting };
+export { tpf, mouseMove, mouseUp, mouseDown, adjustHoverBox, autosaveDots, debounce, throttle, handleKeyboardMovement, handleKeyboardDelete, handleMultiDotSelection, isSelecting };

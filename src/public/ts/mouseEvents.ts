@@ -1083,5 +1083,6 @@ export {
     throttle,
     handleKeyboardMovement,
     handleKeyboardDelete,
+    handleMultiDotSelection,
     isSelecting
 };

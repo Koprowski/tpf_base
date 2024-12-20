@@ -53,8 +53,9 @@ function dotsCreate() {
     var xyPlane = document.getElementById("xy-plane");
     if (!xyPlane)
         return;
-    xyPlane.addEventListener('click', function (e) {
-        console.log('XYPlane click:', {
+    var isDragging = false; // Flag to track dragging state
+    xyPlane.addEventListener('mousedown', function (e) {
+        console.log('XYPlane mousedown:', {
             target: e.target,
             defaultPrevented: e.defaultPrevented,
             cancelBubble: e.cancelBubble
@@ -116,6 +117,10 @@ function dotsCreate() {
                 adjustHoverBox(dotContainer);
                 adjustSelectedBox(dotContainer);
             }
+            console.log('After handling dot selection/deselection:', {
+                selectedDot: tpf.selectedDot ? tpf.selectedDot.getAttribute('data-dot-id') : null,
+                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            });
             e.stopPropagation();
             return;
         }
@@ -131,13 +136,42 @@ function dotsCreate() {
             tpf.selectedDot.classList.remove('selected');
             adjustHoverBox(tpf.selectedDot);
             tpf.selectedDot = null;
+            console.log('After handling whitespace click with selected dot:', {
+                selectedDot: tpf.selectedDot ? tpf.selectedDot.getAttribute('data-dot-id') : null,
+                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            });
             e.stopPropagation();
             return;
         }
         // Only proceed to dot creation if we haven't handled a selection action
         if (!tpf.selectedDot) {
+            console.log('Proceeding to dot creation:', {
+                selectedDot: tpf.selectedDot ? tpf.selectedDot.getAttribute('data-dot-id') : null,
+                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            });
             xyPlaneClickHandler(e);
         }
+    });
+    xyPlane.addEventListener('mousemove', function (e) {
+        // This listener can remain as is, but isDragging is already set in mousedown
+        isDragging = true;
+    });
+    xyPlane.addEventListener('mouseup', function (e) {
+        // Only handle deselection logic if NOT dragging
+        if (!isDragging) {
+            var selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+            if (selectedDots.length > 0) {
+                selectedDots.forEach(function (dot) {
+                    dot.classList.remove('selected');
+                    dot.classList.remove('multi-selected');
+                    adjustHoverBox(dot);
+                    adjustSelectedBox(dot);
+                });
+                tpf.selectedDot = null;
+            }
+        }
+        // Reset dragging flag AFTER checking for deselection
+        isDragging = false;
     });
     function xyPlaneClickHandler(event) {
         var target = event.target;
@@ -195,7 +229,8 @@ function dotsCreate() {
             }
         };
         if (isClickInsideGraph(graphCoords)) {
-            if (tpf.currentDot === null) {
+            console.log('Click inside graph, checking tpf.currentDot:', tpf.currentDot);
+            if (tpf.currentDot === null && !isDragging) {
                 try {
                     var dot_1 = loadSavedDots(savedDot);
                     xyPlane.appendChild(dot_1);

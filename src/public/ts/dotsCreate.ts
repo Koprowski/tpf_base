@@ -1,7 +1,7 @@
 import { tpf } from "./data";
 import { removeAnyExistingElementsWithClassName } from "./removeAnyExistingElementsWithClassName";
 import log from "./util.log";
-import { mouseDown, mouseUp, mouseMove,isSelecting } from "./mouseEvents";
+import { mouseDown, mouseUp, mouseMove,isSelecting, handleMultiDotSelection } from "./mouseEvents";
 import { dotsSave, autosaveDots } from "./dotsSave";
 import { pixelToCoordinate, coordinateToPixel } from "./createTickMarks";
 import { DOT_BOX, LABEL_CONNECTION } from './constants';
@@ -9,6 +9,7 @@ import { SavedDot } from './types';
 import { startLabelBoxDrag } from './utils';
 import { editDeleteMenu } from './editDeleteMenu';
 import { loadSavedDots } from "./dotsLoad";
+
 
 // Generate a unique ID for dots
 function generateDotId(): string {
@@ -19,15 +20,18 @@ function generateDotId(): string {
 function dotsCreate() {
     log("createDots");
     const xyPlane = document.getElementById("xy-plane");
+    
     if (!xyPlane) return;
     
-    xyPlane.addEventListener('click', (e) => {
-        console.log('XYPlane click:', {
+    let isDragging = false; // Flag to track dragging state
+
+    xyPlane.addEventListener('mousedown', (e) => {
+        console.log('XYPlane mousedown:', {
             target: e.target,
             defaultPrevented: e.defaultPrevented,
             cancelBubble: e.cancelBubble
         });
-
+    
         console.log('Current dot states:', {
             selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
             isDragging: tpf.isDragging,
@@ -37,25 +41,27 @@ function dotsCreate() {
             eventPreventDefault: e.defaultPrevented,
             eventPropagationStopped: e.cancelBubble
         });
-        
-         // Return early if event was already handled
+    
+        // Return early if event was already handled
         if (e.defaultPrevented) {
             console.log('Event was already handled, returning early');
             return;
         }
-
+    
         // Handle dot selection/deselection
         const target = e.target as HTMLElement;
         const dotContainer = findDotContainer(target);
         const hasSelectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length > 0;
-
+    
         if (hasSelectedDots && target === xyPlane) {
             console.log('Selected dots exist and clicking xy-plane - preventing creation');
+    
             e.preventDefault();
             e.stopPropagation();
+    
             return;
         }
-
+    
         // If we clicked on a dot
         if (dotContainer && !dotContainer.classList.contains('editing')) {
             // If clicking on the currently selected dot, deselect it
@@ -82,16 +88,23 @@ function dotsCreate() {
                     adjustHoverBox(tpf.selectedDot);
                     adjustSelectedBox(tpf.selectedDot);
                 }
+    
                 // Select the new dot
                 dotContainer.classList.add('selected');
                 tpf.selectedDot = dotContainer;
                 adjustHoverBox(dotContainer);
                 adjustSelectedBox(dotContainer);
             }
+    
+            console.log('After handling dot selection/deselection:', {
+                selectedDot: tpf.selectedDot ? (tpf.selectedDot as HTMLElement).getAttribute('data-dot-id') : null,
+                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            });
+    
             e.stopPropagation();
             return;
         }
-        
+    
         // If clicking on whitespace while a dot is selected
         if (tpf.selectedDot && !dotContainer) {
             const coordsElement = tpf.selectedDot.querySelector('.dot-coordinates');
@@ -100,19 +113,53 @@ function dotsCreate() {
                 const currentCoords = coordsElement.textContent || '';
                 tpf.selectedDot.setAttribute('data-original-coords', currentCoords);
             }
-            
+    
             // Deselect the current dot
             tpf.selectedDot.classList.remove('selected');
             adjustHoverBox(tpf.selectedDot);
             tpf.selectedDot = null;
+    
+            console.log('After handling whitespace click with selected dot:', {
+                selectedDot: tpf.selectedDot ? (tpf.selectedDot as HTMLElement).getAttribute('data-dot-id') : null,
+                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            });
+    
             e.stopPropagation();
             return;
         }
-
+    
         // Only proceed to dot creation if we haven't handled a selection action
         if (!tpf.selectedDot) {
+            console.log('Proceeding to dot creation:', {
+                selectedDot: tpf.selectedDot ? (tpf.selectedDot as HTMLElement).getAttribute('data-dot-id') : null,
+                selectedDotCount: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            });
             xyPlaneClickHandler(e);
         }
+    });
+
+    xyPlane.addEventListener('mousemove', (e) => {
+        // This listener can remain as is, but isDragging is already set in mousedown
+        isDragging = true; 
+    });
+
+    xyPlane.addEventListener('mouseup', (e) => {
+        // Only handle deselection logic if NOT dragging
+        if (!isDragging) { 
+            const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+            if (selectedDots.length > 0) {
+                selectedDots.forEach(dot => {
+                    dot.classList.remove('selected');
+                    dot.classList.remove('multi-selected');
+                    adjustHoverBox(dot as HTMLElement);
+                    adjustSelectedBox(dot as HTMLElement);
+                });
+                tpf.selectedDot = null;
+            }
+        }
+    
+        // Reset dragging flag AFTER checking for deselection
+        isDragging = false; 
     });
 
     function xyPlaneClickHandler(event: MouseEvent) {
@@ -179,7 +226,10 @@ function dotsCreate() {
         };
 
         if (isClickInsideGraph(graphCoords)) {
-            if (tpf.currentDot === null) {
+            
+            console.log('Click inside graph, checking tpf.currentDot:', tpf.currentDot);
+
+            if (tpf.currentDot === null && !isDragging) {
                 try {
                     const dot = loadSavedDots(savedDot);
                     xyPlane.appendChild(dot);
