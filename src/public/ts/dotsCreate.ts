@@ -639,8 +639,11 @@ function createLabelEditor(labelElement: HTMLElement, dotContainer: HTMLDivEleme
     input.type = 'text';
     input.className = 'label-input';
 
+    // Store the original label text for potential restoration
+    const originalLabel = labelElement.textContent || '';
+    
     // Pre-populate the input with the current label text
-    input.value = labelElement.textContent || '';
+    input.value = originalLabel === 'null' ? '' : originalLabel;
 
     const labelRect = labelElement.getBoundingClientRect();
     const containerRect = dotContainer.getBoundingClientRect();
@@ -707,50 +710,56 @@ function createLabelEditor(labelElement: HTMLElement, dotContainer: HTMLDivEleme
                             x: (dotEl as HTMLElement).style.left,
                             y: (dotEl as HTMLElement).style.top,
                             coordinates: coordsElement?.textContent || '',
-                            label: labelEl?.textContent || 'null'};
-                        });
-                        
-                        await dotsSave(dots);
-                        await autosaveDots();
-                    } catch (error) {
-                        console.error('Error saving dots:', error);
-                    }
-                }
-                
-            } catch (error) {
-                console.error('Error in finishEdit:', error);
-                if (labelElement) {
-                    labelElement.style.visibility = 'visible';
+                            label: labelEl?.textContent || 'null'
+                        };
+                    });
+                    
+                    await dotsSave(dots);
+                    await autosaveDots();
+                } catch (error) {
+                    console.error('Error saving dots:', error);
                 }
             }
-        };
-        
-        input.addEventListener('blur', () => {
-            if (isFinishing || isEscPressed) return;
-            isFinishing = true;
             
-            requestAnimationFrame(() => {
-                if (!isEscPressed) {
-                    finishEdit();
-                }
+        } catch (error) {
+            console.error('Error in finishEdit:', error);
+            if (labelElement) {
+                labelElement.style.visibility = 'visible';
+            }
+        }
+    };
+        
+    input.addEventListener('blur', () => {
+        if (isFinishing || isEscPressed) return;
+        isFinishing = true;
+        
+        requestAnimationFrame(() => {
+            if (!isEscPressed) {
+                finishEdit();
+            }
+            labelElement.style.visibility = 'visible';
+            isFinishing = false;
+        });
+    });
+
+    input.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (!isFinishing) {
+                isFinishing = true;
+                await finishEdit();
                 labelElement.style.visibility = 'visible';
                 isFinishing = false;
-            });
-        });
-    
-        input.addEventListener('keydown', async (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                if (!isFinishing) {
-                    isFinishing = true;
-                    await finishEdit();
-                    labelElement.style.visibility = 'visible';
-                    isFinishing = false;
-                }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                isEscPressed = true;
-    
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            isEscPressed = true;
+
+            // Check if this is a new dot (no label) or existing dot
+            const isNewDot = !originalLabel || originalLabel === 'null';
+
+            if (isNewDot) {
+                // For new dots without a label, proceed with deletion
                 const dotState = {
                     x: dotContainer.style.left,
                     y: dotContainer.style.top,
@@ -758,39 +767,44 @@ function createLabelEditor(labelElement: HTMLElement, dotContainer: HTMLDivEleme
                     label: '',
                     id: dotContainer.getAttribute('data-dot-id') || ''
                 };
-    
-                if (input.parentNode === dotContainer) {
-                    dotContainer.removeChild(input);
-                }
-                
+
                 if (dotContainer.parentNode) {
                     dotContainer.parentNode.removeChild(dotContainer);
                 }
-                
-                labelElement.style.visibility = 'visible';
-    
+
                 const cancelEvent = new CustomEvent('dotCreateCanceled', {
                     bubbles: true,
                     detail: { dotState }
                 });
                 document.dispatchEvent(cancelEvent);
-                
-                // Check if we're not on homepage before autosaving
-                const urlParts = window.location.pathname.split('/');
-                if (urlParts.length > 2 && urlParts[1] !== '') {
-                    try {
-                        await autosaveDots();
-                    } catch (error) {
-                        console.error('Error saving after cancel:', error);
-                    }
+            } else {
+                // For existing dots, restore the original label
+                labelElement.textContent = originalLabel;
+                labelElement.style.visibility = 'visible';
+                if (input.parentNode === dotContainer) {
+                    dotContainer.removeChild(input);
                 }
             }
-        });
-    
-        dotContainer.appendChild(input);
-        input.focus();
-        input.select();
-    }
+
+            // Always remove editing state
+            dotContainer.classList.remove('editing');
+            
+            // Check if we're not on homepage before autosaving
+            const urlParts = window.location.pathname.split('/');
+            if (urlParts.length > 2 && urlParts[1] !== '') {
+                try {
+                    await autosaveDots();
+                } catch (error) {
+                    console.error('Error saving after cancel:', error);
+                }
+            }
+        }
+    });
+
+    dotContainer.appendChild(input);
+    input.focus();
+    input.select();
+}
     
 function mouseContextmenu(event: Event) {
     log('dot.contextmenu');

@@ -1,0 +1,626 @@
+/* Font face declaration */
+@font-face {
+    font-family: 'National Park';
+    src: url('/public/content/fonts/NationalPark-Heavy.otf') format('opentype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+/* Header container styles */
+
+/* Initial header state */
+.page-header-container {
+    position: relative;
+    width: calc(100% + 3rem);
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: -2.5rem 0 2.25rem -1.5rem;
+    border-bottom: 1px solid #E5E7EB;
+    background: white;
+}
+
+/* Sticky state styles */
+.page-header-container:has(> *) {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* When header becomes sticky */
+.page-header-container.sticky,
+.page-header-container:has(> *[style*="position: sticky"]) {
+    height: 2rem;
+}
+
+.fixed-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: white;
+}
+
+/* Title styles */
+.editable-title-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 56rem; /* Tailwind's max-w-4xl */
+    z-index: 10;
+    padding: 0;
+    margin-bottom: 5px;
+}
+
+.editable-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #00157F;
+    min-width: 100px;
+    padding: 2px 10px;
+    border-radius: 4px;
+    cursor: text;
+    text-align: center;
+    margin: 0 ;
+    line-height: 1.2;
+}
+
+.editable-title:hover {
+    background-color: rgba(191, 44, 44, 0.05);
+}
+  
+.editable-title:focus {
+    background-color: #fff;
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Action Links styles */
+.action-links {
+    position: absolute;
+    right: 1.5rem;
+    display: flex;
+    gap: 1.5rem;
+    z-index: 20;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Header line */
+.header-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background-color: #E5E7EB;
+    z-index: 5;
+}
+
+/* Container adjustment */
+.bg-white.shadow.rounded-lg.p-6 {
+    padding-top: 0rem; 
+}
+
+.action-link {
+    color: #9CA3AF;
+    transition: color 0.2s;
+}
+
+.action-link:hover {
+    color: #2563EB;
+}
+
+.action-link.delete:hover {
+    color: #DC2626;
+}
+
+/* Modal styles */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+
+.modal-content {
+    background: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 24rem;
+    width: 100%;
+    margin: 0 1rem;
+}
+
+/* Header title styles - Updated font size */
+.header-title {
+    font-family: 'National Park', sans-serif;
+    color: #00157F;
+    font-size: 2.0rem;
+    font-weight: bold;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* Logo styles */
+.nav-logo {
+    display: flex;
+    align-items: center;
+}
+
+.nav-logo img {
+    width: 50px; 
+    height: 50px;
+    object-fit: contain;
+}
+
+/* Username field styles */
+.editable-username-field {
+    background-color: #f8fafc !important;
+    transition: all 0.2s ease-in-out;
+}
+
+.editable-username-field:hover {
+    background-color: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+}
+
+.editable-username-field:focus {
+    background-color: #ffffff !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+  
+/* Base grid styles */
+#xy-plane {
+    width: 350px;
+    height: 350px;
+    margin: 0 auto;
+    position: relative;
+    margin-top: 2px;
+    margin-bottom: 20px;
+    overflow: visible;
+    padding-top: 2px;
+}
+
+/* Axis styles */
+#xy-plane .y-axis,
+#xy-plane .x-axis {
+    position: absolute;
+    background-color: black;
+    width: 2px;
+    height: 2px;
+}
+
+#xy-plane .y-axis {
+    top: 0;
+    left: 50%;
+    height: 100%;
+    transform: translateX(-50%);
+    margin-right: 1px;
+}
+
+#xy-plane .x-axis {
+    top: calc(50% + 1px); /*  Move x-axis to match XY Plane coordinate positioning */
+    left: 0;
+    width: 100%;
+    transform: translateY(-50%);
+}
+  
+
+/* Y-axis labels */
+#xy-plane .label-group.top {
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+#xy-plane .label-group.bottom {
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Text adjustments for "Never/Always Do" */
+#xy-plane .label-group .main-text {
+    margin-bottom: 2px;
+    transform: translate(5px, 2px);
+}
+
+#xy-plane .label-group .sub-text {
+    font-size: 14px;
+    transform: translate(5px, -2px);
+}
+
+#xy-plane .label-group.right .main-text {
+    transform: translate(-5px, 2px);
+}
+
+#xy-plane .label-group.right .sub-text {
+    transform: translate(-5px, -2px);
+}
+
+/* For the alternative style */
+#xy-plane .x-label-group .main-label {
+    margin-bottom: 2px;
+    transform: translateY(2px);  /* Move Never/Always down 2px */
+}
+
+#xy-plane .x-label-group .sub-label {
+    transform: translateY(-2px);  /* Move Do up 2px */
+}
+
+/* Label group styling */
+#xy-plane .x-label-group {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-weight: 650;
+    font-size: 14px;
+    color: #333333;
+    text-align: center;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+#xy-plane .x-label-group.left {
+    left: -2px;
+    transform: translate(-100%, -50%);
+    padding-right: 2px;
+    margin-top: -4px;
+}
+
+#xy-plane .x-label-group.right {
+    right: -2px;
+    transform: translate(100%, -50%);
+    padding-left: 2px;
+    margin-top: -4px;
+}
+
+#xy-plane .x-label-group .main-label {
+    margin-bottom: 2px;  /* Small space between words */
+}
+
+/* Y-axis label styles */
+#xy-plane .y-label {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-weight: 650;
+    position: absolute;
+    font-size: 14px;
+    color: #333333;
+    white-space: nowrap;
+    text-align: center;
+}
+
+#xy-plane .y-label.top {
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+#xy-plane .y-label.bottom {
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Container adjustment */
+.bg-white.shadow.rounded-lg.p-0 {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+  
+/* Tick mark styles */
+#xy-plane .x-tick,
+#xy-plane .y-tick {
+    position: absolute;
+    background-color: black;
+}
+
+#xy-plane .x-tick {
+    width: 2px;
+    height: 12px;
+    top: calc(50% - 5px); /* Move tick marks to match XY Plane */
+    transform: translateX(-50%);
+}
+
+#xy-plane .y-tick {
+    width: 12px;
+    height: 2px;
+    left: calc(50% - 6px);
+    transform: translateY(-50%);
+}
+
+/* Hide center tick marks */
+#xy-plane .x-tick.center-tick,
+#xy-plane .y-tick.center-tick {
+    display: none;
+}
+
+/* Dot styles */
+.dot-container {
+    position: absolute;
+    display: flex;
+    transform: translate(-50%, -50%);
+}
+
+.dot {
+    width: 4px;
+    height: 4px;
+    background-color: #ff4800;
+    border-radius: 50%;
+    position: relative;
+    margin-top: 0px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.coordinate-text {
+    position: relative;
+    left: 0px;
+    top: -20px;
+    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+}
+
+.dot-coordinates {
+    white-space: nowrap;
+    margin-left: 10px;
+    font-size: 13px;
+    color: green;
+    z-index: 0;
+    margin-top: 2px;
+}
+
+.user-dot-label {
+    color: blue;
+    font-size: 13px;
+    width: auto;
+    min-width: 50px;
+    margin-left: 12px;
+    z-index: 1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    height: 16px;
+    line-height: 16px;
+}
+
+.dot.selected {
+    border: 2px solid blue;
+}
+
+.dot,
+.dot-coordinates,
+.user-dot-label {
+    cursor: pointer;
+}
+
+/* Menu styles */
+.edit-menu {
+    background: white;
+    border: 1px solid #ccc;
+    padding: 5px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+}
+
+.edit-menu div {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.edit-menu div:hover {
+    background: #f0f0f0;
+}
+
+/* Input styles */
+.label-input {
+    font-size: 13px;
+    color: blue;
+    border: 1px solid #ccc;
+    outline: none;
+    background: white;
+    width: auto;
+    min-width: 50px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 0 2px;
+    margin-left: 10px;
+    position: absolute;
+    z-index: 1000;
+    height: 16px;
+    line-height: 16px;
+    pointer-events: auto;
+    box-sizing: border-box;
+}
+
+.label-input:focus {
+    background-color: rgba(200, 200, 255, 0.1);
+    border-bottom: 1px solid blue;
+}
+
+/* Container adjustment */
+.bg-white.shadow.rounded-lg.p-6 {
+    padding-top: 45px;
+    padding-bottom: 45px;
+}
+
+/* Dot Container Selection and hover states */
+
+.dot-container.editing::before {
+    border: none;
+}
+
+.dot-container.editing .dot,
+.dot-container.editing .coordinate-text {
+    pointer-events: auto;
+}
+
+.user-dot-label ~ .dot-container.selected::before,
+.dot-container.user-dot-label.selected::before {
+    border: none;
+}
+
+.dot-container:has(.label-input):hover::before,
+.dot-container:has(.label-input).selected::before {
+    border: none !important;
+}
+
+.dot-container.selected .dot,
+.dot-container.multi-selected {
+    background-color: #3b82f6;
+    transform: scale(1.2);
+}
+
+/* Disable hover effects while editing */
+.dot-container.editing .connecting-line,
+.dot-container.editing .label-container,
+.dot-container.editing .dot {
+    border-color: #e5e7eb !important;
+    box-shadow: none;
+    transform: none;
+    opacity: 0.6;
+}
+
+/* Other Styles */
+
+.edit-menu div {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.edit-menu div:hover {
+    background: #f0f0f0;
+}
+
+  
+/* Selection and hover states */
+
+.dot-container.editing::before {
+    border: none;
+}
+
+.dot-container.editing .dot,
+.dot-container.editing .coordinate-text {
+    pointer-events: auto;
+}
+
+/* Additional hover and selection styles */
+.user-dot-label ~ .dot-container.selected::before,
+.dot-container.user-dot-label.selected::before {
+    border: none;
+}
+
+.dot-container:has(.label-input):hover::before,
+.dot-container:has(.label-input).selected::before {
+    border: none !important;
+}
+
+/* Hover and selected states */
+.dot-container:hover .connecting-line {
+    border-top-color: #000000 !important;
+    opacity: 1;
+    border-top-style: solid;
+}
+
+.dot-container.selected .connecting-line,
+.dot-container.multi-selected .connecting-line {
+    border-top-color: #3b82f6 !important;
+    opacity: 1;
+    border-top-style: solid;
+}
+
+.dot-container:hover .label-container {
+    border-color: #000000 !important;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+}
+
+.dot-container.selected .label-container,
+.dot-container.multi-selected .label-container {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Dot Label & Connecting Line */
+
+/* Connecting line styles */
+.connecting-line {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    height: 1px;
+    transform-origin: left center;
+    border-top: 1px solid #d1d5db;
+    pointer-events: none;
+    z-index: 1;
+    background-color: #d1d5db;
+    display: block;
+    opacity: 0.6;
+    transition: all 0.2s ease-in-out;
+}
+
+
+/* Add a hover effect for the line */
+.dot-container:hover .connecting-line {
+    border-top: 1px solid #000000;
+    border-top-color: #000000 !important;
+    opacity: 1;
+    background-color: #000000;
+}
+
+/* Selected state for the line */
+.dot-container.selected .connecting-line,
+.dot-container.multi-selected .connecting-line {
+    border-top: 1px solid #3b82f6 !important;
+    opacity: 1;
+    background-color: #3b82f6;
+}
+
+/* Label container styles */
+.label-container {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 8px;
+    cursor: move;
+    white-space: nowrap;
+    display: inline-block;
+    z-index: 2;
+    transition: all 0.2s ease-in-out;
+    /* Ensure consistent vertical centering */
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+
+/* When selected or dragging */
+.dot-container.selected .connecting-line,
+.dot-container.dragging .connecting-line {
+    border-top-style: solid;
+    border-top-color: #2563eb;
+}
+
+
+/* Multi-dot Selection */
+.dot-container.multi-selected .dot {
+    background-color: rgba(0, 123, 255, 0.5); /* Light blue highlight */
+    border: 2px solid blue;
+}
+
+.selection-rectangle {
+    position: absolute;
+    border: 1px solid rgba(0, 123, 255, 0.7);
+    background-color: rgba(0, 123, 255, 0.1);
+    pointer-events: none;
+    z-index: 10;
+}

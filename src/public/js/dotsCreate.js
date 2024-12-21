@@ -573,8 +573,10 @@ function createLabelEditor(labelElement, dotContainer) {
     var input = document.createElement('input');
     input.type = 'text';
     input.className = 'label-input';
+    // Store the original label text for potential restoration
+    var originalLabel = labelElement.textContent || '';
     // Pre-populate the input with the current label text
-    input.value = labelElement.textContent || '';
+    input.value = originalLabel === 'null' ? '' : originalLabel;
     var labelRect = labelElement.getBoundingClientRect();
     var containerRect = dotContainer.getBoundingClientRect();
     input.style.top = (labelRect.top - containerRect.top) + 'px';
@@ -674,7 +676,7 @@ function createLabelEditor(labelElement, dotContainer) {
         });
     });
     input.addEventListener('keydown', function (e) { return __awaiter(_this, void 0, void 0, function () {
-        var dotState, cancelEvent, urlParts, error_3;
+        var isNewDot, dotState, cancelEvent, urlParts, error_3;
         var _a;
         return __generator(this, function (_b) {
             switch (_b.label) {
@@ -694,25 +696,34 @@ function createLabelEditor(labelElement, dotContainer) {
                     if (!(e.key === 'Escape')) return [3 /*break*/, 7];
                     e.preventDefault();
                     isEscPressed = true;
-                    dotState = {
-                        x: dotContainer.style.left,
-                        y: dotContainer.style.top,
-                        coordinates: ((_a = dotContainer.querySelector('.dot-coordinates')) === null || _a === void 0 ? void 0 : _a.textContent) || '',
-                        label: '',
-                        id: dotContainer.getAttribute('data-dot-id') || ''
-                    };
-                    if (input.parentNode === dotContainer) {
-                        dotContainer.removeChild(input);
+                    isNewDot = !originalLabel || originalLabel === 'null';
+                    if (isNewDot) {
+                        dotState = {
+                            x: dotContainer.style.left,
+                            y: dotContainer.style.top,
+                            coordinates: ((_a = dotContainer.querySelector('.dot-coordinates')) === null || _a === void 0 ? void 0 : _a.textContent) || '',
+                            label: '',
+                            id: dotContainer.getAttribute('data-dot-id') || ''
+                        };
+                        if (dotContainer.parentNode) {
+                            dotContainer.parentNode.removeChild(dotContainer);
+                        }
+                        cancelEvent = new CustomEvent('dotCreateCanceled', {
+                            bubbles: true,
+                            detail: { dotState: dotState }
+                        });
+                        document.dispatchEvent(cancelEvent);
                     }
-                    if (dotContainer.parentNode) {
-                        dotContainer.parentNode.removeChild(dotContainer);
+                    else {
+                        // For existing dots, restore the original label
+                        labelElement.textContent = originalLabel;
+                        labelElement.style.visibility = 'visible';
+                        if (input.parentNode === dotContainer) {
+                            dotContainer.removeChild(input);
+                        }
                     }
-                    labelElement.style.visibility = 'visible';
-                    cancelEvent = new CustomEvent('dotCreateCanceled', {
-                        bubbles: true,
-                        detail: { dotState: dotState }
-                    });
-                    document.dispatchEvent(cancelEvent);
+                    // Always remove editing state
+                    dotContainer.classList.remove('editing');
                     urlParts = window.location.pathname.split('/');
                     if (!(urlParts.length > 2 && urlParts[1] !== '')) return [3 /*break*/, 7];
                     _b.label = 4;

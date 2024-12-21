@@ -1,5 +1,7 @@
-import { dotsSave } from "./dotsSave";
 import log from "./util.log";
+import { updateConnectingLine } from './utils';
+import { adjustHoverBox, createLabelEditor } from './dotsCreate';
+import { LABEL_CONNECTION } from './constants';
 
 interface TPF {
     skipGraphClick: boolean;
@@ -23,8 +25,9 @@ interface DotState {
     coordinates: string;
     label: string;
     id?: string;
-    labelOffset?: { x: number; y: number }; // New property for label position
-    lineLength?: number;  // New property for connecting line length
+    labelOffset?: { x: number; y: number };
+    lineLength?: number;
+    lineAngle?: number;
 }
 
 interface UndoAction {
@@ -114,32 +117,83 @@ function handleUndo(event: KeyboardEvent) {
         const xyPlane = document.getElementById('xy-plane');
         if (!xyPlane) return;
 
-        switch (lastAction.type) {
-            case 'move':
-                if (lastAction.previousState) {
-                    const dot = document.querySelector(`[data-dot-id="${lastAction.dotId}"]`) as HTMLElement;
-                    if (dot) {
-                        updateDotState(dot, lastAction.previousState);
+        try {
+            switch (lastAction.type) {
+                case 'move':
+                    if (lastAction.previousState) {
+                        const dot = document.querySelector(`[data-dot-id="${lastAction.dotId}"]`) as HTMLElement;
+                        if (dot) {
+                            // Store current state for potential redo
+                            const currentState = recordDotState(dot);
+                            
+                            // Update position and state
+                            updateDotState(dot, lastAction.previousState);
+                            
+                            // Update connecting line
+                            updateConnectingLine(dot);
+                            
+                            // Update hover box if selected
+                            if (dot.classList.contains('selected')) {
+                                adjustHoverBox(dot);
+                            }
+                            
+                            autosaveAfterUndo();
+                        }
+                    }
+                    break;
+                    
+                case 'delete':
+                    if (lastAction.previousState) {
+                        // Create new dot with full state
+                        const newDot = createDotElement(lastAction.previousState);
+                        
+                        // Set the position explicitly
+                        newDot.style.left = lastAction.previousState.x;
+                        newDot.style.top = lastAction.previousState.y;
+                        
+                        // Add to DOM
+                        xyPlane.appendChild(newDot);
+                        
+                        // Update connecting line and layout
+                        requestAnimationFrame(() => {
+                            updateConnectingLine(newDot);
+                            if (newDot.classList.contains('selected')) {
+                                adjustHoverBox(newDot);
+                            }
+                        });
+                        
                         autosaveAfterUndo();
                     }
-                }
-                break;
-                
-            case 'delete':
-                if (lastAction.previousState) {
-                    const newDot = createDotElement(lastAction.previousState);
-                    xyPlane.appendChild(newDot);
-                    autosaveAfterUndo();
-                }
-                break;
-                
-            case 'create':
-                const dotToRemove = document.querySelector(`[data-dot-id="${lastAction.dotId}"]`);
-                if (dotToRemove) {
-                    dotToRemove.remove();
-                    autosaveAfterUndo();
-                }
-                break;
+                    break;
+                    
+                case 'create':
+                    const dotToRemove = document.querySelector(`[data-dot-id="${lastAction.dotId}"]`);
+                    if (dotToRemove) {
+                        // Store state before removal for potential redo
+                        const stateBeforeRemoval = recordDotState(dotToRemove as HTMLElement);
+                        
+                        dotToRemove.remove();
+                        autosaveAfterUndo();
+                    }
+                    break;
+                    
+                case 'labelMove':
+                    if (lastAction.previousState) {
+                        const dot = document.querySelector(`[data-dot-id="${lastAction.dotId}"]`) as HTMLElement;
+                        if (dot) {
+                            const labelContainer = dot.querySelector('.label-container') as HTMLElement;
+                            if (labelContainer && lastAction.previousState.labelOffset) {
+                                labelContainer.style.left = `${lastAction.previousState.labelOffset.x}px`;
+                                labelContainer.style.top = `${lastAction.previousState.labelOffset.y}px`;
+                                updateConnectingLine(dot);
+                                autosaveAfterUndo();
+                            }
+                        }
+                    }
+                    break;
+            }
+        } catch (error) {
+            console.error('Error in undo operation:', error);
         }
     }
 }
@@ -148,26 +202,121 @@ function createDotElement(state: DotState): HTMLElement {
     const dot = document.createElement('div');
     dot.className = 'dot-container';
     dot.setAttribute('data-dot-id', state.id || generateDotId());
+    dot.style.position = 'absolute';
+    dot.style.left = state.x;
+    dot.style.top = state.y;
     dot.style.transform = 'translate(-50%, -50%)';
-    updateDotState(dot, state);
     
-    dot.innerHTML = `
-        <div class='dot' style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
-        <div class='coordinate-text' style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%);">
-            <div class='user-dot-label' style='position: relative; margin-bottom: 4px;'>${state.label}</div>
-            <div class='dot-coordinates' style='position: relative;'>${state.coordinates}</div>
-        </div>
-    `;
+    try {
+        // Create dot element with centered positioning
+        const dotElement = document.createElement('div');
+        dotElement.className = 'dot';
+        dotElement.style.position = 'absolute';
+        dotElement.style.top = '50%';
+        dotElement.style.left = '50%';
+        dotElement.style.transform = 'translate(-50%, -50%)';
+        dot.appendChild(dotElement);
 
-    dot.addEventListener('contextmenu', (e) => e.preventDefault());
-    dot.addEventListener('mousedown', (e) => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains('dot-container')) {
-            e.preventDefault();
-            tpf.isDragging = true;
-            tpf.currentDot = target as HTMLDivElement;
-        }
-    });
+        // Get saved label position or use defaults
+        const labelOffset = state.labelOffset || {
+            x: LABEL_CONNECTION.DEFAULT_LENGTH,
+            y: -LABEL_CONNECTION.DEFAULT_LENGTH
+        };
+
+        // Calculate line length from offset or use saved value
+        const lineLength = state.lineLength || 
+            Math.sqrt(labelOffset.x * labelOffset.x + labelOffset.y * labelOffset.y);
+
+        // Calculate line angle from offset or use saved value
+        const lineAngle = state.lineAngle || 
+            Math.atan2(labelOffset.y, labelOffset.x) * (180 / Math.PI);
+
+        // Create connecting line before label container
+        const line = document.createElement('div');
+        line.className = 'connecting-line';
+        Object.assign(line.style, {
+            position: 'absolute',
+            width: `${lineLength}px`,
+            height: '1px',
+            top: '50%',
+            left: '50%',
+            transform: `rotate(${lineAngle}deg)`,
+            transformOrigin: 'left center',
+            backgroundColor: LABEL_CONNECTION.LINE_COLOR,
+            borderTop: `${LABEL_CONNECTION.LINE_WIDTH}px solid ${LABEL_CONNECTION.LINE_COLOR}`,
+            pointerEvents: 'none',
+            display: 'block',
+            zIndex: '1'
+        });
+        dot.appendChild(line);
+
+        // Store line properties
+        dot.setAttribute('data-line-length', lineLength.toString());
+        dot.setAttribute('data-line-angle', lineAngle.toString());
+
+        // Create label container with stored positioning
+        const labelContainer = document.createElement('div');
+        labelContainer.className = 'label-container';
+        Object.assign(labelContainer.style, {
+            position: 'absolute',
+            left: `${labelOffset.x}px`,
+            top: `${labelOffset.y}px`,
+            backgroundColor: LABEL_CONNECTION.BOX_BACKGROUND,
+            border: `${LABEL_CONNECTION.BOX_BORDER_WIDTH}px solid ${LABEL_CONNECTION.BOX_BORDER_COLOR}`,
+            borderRadius: `${LABEL_CONNECTION.BOX_BORDER_RADIUS}px`,
+            padding: '8px',
+            cursor: 'move',
+            whiteSpace: 'nowrap',
+            zIndex: '2'
+        });
+
+        labelContainer.innerHTML = `
+            <div class='user-dot-label'>${state.label}</div>
+            <div class='dot-coordinates'>${state.coordinates}</div>
+        `;
+
+        // Add double-click handler for label editing
+        labelContainer.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            const labelElement = labelContainer.querySelector('.user-dot-label') as HTMLElement;
+            if (labelElement) {
+                createLabelEditor(labelElement, dot);
+            }
+        });
+
+        dot.appendChild(labelContainer);
+
+        // Store original offset for reference
+        dot.setAttribute('data-original-offset', JSON.stringify(labelOffset));
+
+        // Add event listeners
+        dot.addEventListener('contextmenu', (e) => e.preventDefault());
+        dot.addEventListener('mousedown', (e) => {
+            const target = e.target as HTMLElement;
+            if (target.classList.contains('dot-container')) {
+                e.preventDefault();
+                tpf.isDragging = true;
+                tpf.currentDot = target as HTMLDivElement;
+            }
+        });
+
+        // Store original coordinates
+        dot.setAttribute('data-original-coords', state.coordinates);
+
+        // Force layout calculation and update connecting line
+        requestAnimationFrame(() => {
+            updateConnectingLine(dot);
+            
+            // Verify label position after layout
+            if (labelContainer && labelOffset) {
+                labelContainer.style.left = `${labelOffset.x}px`;
+                labelContainer.style.top = `${labelOffset.y}px`;
+            }
+        });
+
+    } catch (error) {
+        console.error('Error creating dot element:', error);
+    }
 
     return dot;
 }
