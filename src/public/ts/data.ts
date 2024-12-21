@@ -5,7 +5,8 @@ import { LABEL_CONNECTION } from './constants';
 import { DotState, TPF, UndoAction, DotStateChange } from './types';
 
 // Initialize undo history
-const undoHistory: UndoAction[] = [];
+export const undoHistory: UndoAction[] = [];
+let redoHistory: UndoAction[] = []; 
 const maxUndoHistory = 50;
 
 let tpf: TPF = {
@@ -39,11 +40,20 @@ function generateDotId(): string {
     return 'dot-' + Math.random().toString(36).substr(2, 9);
 }
 
+// In data.ts
+
 function addToUndoHistory(action: UndoAction) {
+    console.log('Adding action to undo history:', action);
     undoHistory.push(action);
-    if (undoHistory.length > maxUndoHistory) {
-        undoHistory.shift();
+    redoHistory = []; // Clear redo history when a new action is added
+
+    if (action.type === 'groupMove' && action.groupedMoves) { // Check if action.groupedMoves exists
+        console.log('Added groupMove to undoHistory:', action.groupedMoves.map(move => move.dotId)); // Log IDs in groupMove
+    } else if (action.type === 'move') {
+        console.log('Added move to undoHistory:', action.dotId); // Log ID of the moved dot
     }
+
+    console.log('Current undo stack:', undoHistory); // Log the current state of the undo stack
 }
 
 function recordDotState(dot: HTMLElement): DotState {
@@ -92,10 +102,19 @@ function handleUndo(event: KeyboardEvent) {
     if (event.ctrlKey && event.key.toLowerCase() === 'z') {
         event.preventDefault();
         const lastAction = undoHistory.pop();
-        if (!lastAction) return;
+
+        if (!lastAction) {
+            console.log('Nothing to undo');
+            return;
+        }
+
+        console.log('Undoing action:', lastAction);
 
         const xyPlane = document.getElementById('xy-plane');
-        if (!xyPlane) return;
+        if (!xyPlane) {
+            console.log('XYPlane not found');
+            return;
+        }
 
         try {
             switch (lastAction.type) {
@@ -116,11 +135,16 @@ function handleUndo(event: KeyboardEvent) {
                             if (dot.classList.contains('selected')) {
                                 adjustHoverBox(dot);
                             }
-                            
+
                             autosaveAfterUndo();
+                        } else {
+                            console.log('Dot not found for move action:', lastAction.dotId);
                         }
+                    } else {
+                        console.log('Previous state not found for move action:', lastAction.dotId);
                     }
                     break;
+
                 case 'delete':
                     if (lastAction.previousState) {
                         // Create new dot with full state
@@ -129,7 +153,7 @@ function handleUndo(event: KeyboardEvent) {
                         // Set the position explicitly
                         newDot.style.left = lastAction.previousState.x;
                         newDot.style.top = lastAction.previousState.y;
-                        
+
                         // Add to DOM
                         xyPlane.appendChild(newDot);
 
@@ -142,8 +166,11 @@ function handleUndo(event: KeyboardEvent) {
                         });
 
                         autosaveAfterUndo();
+                    } else {
+                        console.log('Previous state not found for delete action:', lastAction.dotId);
                     }
                     break;
+
                 case 'create':
                     const dotToRemove = document.querySelector(`[data-dot-id="${lastAction.dotId}"]`);
                     if (dotToRemove) {
@@ -162,8 +189,11 @@ function handleUndo(event: KeyboardEvent) {
                         dotToRemove.remove();
 
                         autosaveAfterUndo();
+                    } else {
+                        console.log('Dot not found for create action:', lastAction.dotId);
                     }
                     break;
+
                 case 'labelMove':
                     if (lastAction.previousState) {
                         const dot = document.querySelector(`[data-dot-id="${lastAction.dotId}"]`) as HTMLElement;
@@ -174,10 +204,45 @@ function handleUndo(event: KeyboardEvent) {
                                 labelContainer.style.top = `${lastAction.previousState.labelOffset.y}px`;
                                 updateConnectingLine(dot);
                                 autosaveAfterUndo();
+                            } else {
+                                console.log('Label container or previous state not found for labelMove action:', lastAction.dotId);
                             }
+                        } else {
+                            console.log('Dot not found for labelMove action:', lastAction.dotId);
                         }
+                    } else {
+                        console.log('Previous state not found for labelMove action:', lastAction.dotId);
                     }
                     break;
+
+                case 'groupMove':
+                    if (lastAction.groupedMoves) {
+                        console.log('Undoing groupMove:', lastAction.groupedMoves);
+
+                        lastAction.groupedMoves.forEach((move, index) => {
+                            console.log(`Undoing individual move ${index + 1}:`, move);
+                            const dot = document.querySelector(`[data-dot-id="${move.dotId}"]`) as HTMLElement;
+                            if (dot && move.previousState) {
+                                updateDotState(dot, move.previousState);
+                                updateConnectingLine(dot);
+
+                                // Update hover box if selected
+                                if (dot.classList.contains('selected')) {
+                                    adjustHoverBox(dot);
+                                }
+                            } else {
+                                console.log(`Dot not found or previous state missing for move ${index + 1}`);
+                            }
+                        });
+
+                        autosaveAfterUndo();
+                    } else {
+                        console.log('groupedMoves array not found in groupMove action');
+                    }
+                    break;
+
+                default:
+                    console.warn('Unknown action type in undo history:', lastAction.type);
             }
         } catch (error) {
             console.error('Error in undo operation:', error);

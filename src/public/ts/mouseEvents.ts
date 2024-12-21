@@ -1,6 +1,6 @@
 import { COORDINATE_STEP, LABEL_CONNECTION, DEBUG} from './constants';
 import { coordinateToPixel, pixelToCoordinate, normalizeCoordinate } from './createTickMarks';
-import { tpf, recordDotState, generateDotId, addToUndoHistory } from "./data";
+import { tpf, recordDotState, generateDotId, addToUndoHistory, undoHistory } from "./data";
 import { adjustHoverBox, adjustSelectedBox } from './dotsCreate';
 import { dotsSave } from "./dotsSave";
 import { throttle, debounce } from './keyboardUtils';
@@ -256,6 +256,8 @@ const throttledMouseMove = throttle((event: MouseEvent) => {
         multiSelectedDots.forEach(dot => {
             moveDot(dot as HTMLElement, deltaX, deltaY);
         });
+      
+        console.log('Moved multiple dots:', Array.from(multiSelectedDots).map(dot => dot.getAttribute('data-dot-id')));
     } 
     // Otherwise, move the single current dot
     else if (tpf.currentDot && isWithinBounds(newLeft, newTop, rect)) {
@@ -272,6 +274,8 @@ const throttledMouseMove = throttle((event: MouseEvent) => {
         tpf.currentDot.style.left = `${finalLeft}px`;
         tpf.currentDot.style.top = `${finalTop}px`;
         
+        console.log('Moved single dot:', tpf.currentDot.getAttribute('data-dot-id')); // Log ID of the moved dot
+
         // Update coordinates text
         const coordsElement = tpf.currentDot.querySelector('.dot-coordinates');
         if (coordsElement) {
@@ -293,11 +297,11 @@ const throttledMouseMove = throttle((event: MouseEvent) => {
 function handleKeyboardMovement(event: KeyboardEvent): void {
     // Check if this is an arrow key movement
     const isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key);
-    
+
     // Get all selected dots, including both single and multi-selected
     const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
     const hasSelectedDots = selectedDots.length > 0;
-    
+
     // Log initial state for debugging
     if (DEBUG) {
         console.log('Keyboard movement:', {
@@ -307,21 +311,24 @@ function handleKeyboardMovement(event: KeyboardEvent): void {
             shiftKey: event.shiftKey
         });
     }
-    
+
     if (!isArrowKey || !hasSelectedDots) {
         return;
     }
 
     // Prevent default arrow key behavior
     event.preventDefault();
-    
+
     try {
         // Store previous states before movement for undo functionality
         const previousStates = Array.from(selectedDots).map(dot => ({
             element: dot as HTMLElement,
             state: recordDotState(dot as HTMLElement)
         }));
-        
+
+        // Grouped Moves for Undo
+        const groupedMoves: DotStateChange[] = [];
+
         // Determine increment based on key combination
         let increment;
         if (event.ctrlKey && event.shiftKey) {
@@ -339,20 +346,20 @@ function handleKeyboardMovement(event: KeyboardEvent): void {
                 console.warn('Invalid dot element encountered');
                 return;
             }
-            
+
             try {
                 // Get current position using parseFloat to preserve decimals
                 const currentLeft = parseFloat(dot.style.left) || 0;
                 const currentTop = parseFloat(dot.style.top) || 0;
-                
+
                 // Convert current pixel position to grid coordinates
                 let currentGridX = pixelToCoordinate(currentLeft);
                 let currentGridY = -pixelToCoordinate(currentTop);
-                
+
                 // Store original position for validation
                 const originalX = currentGridX;
                 const originalY = currentGridY;
-                
+
                 // Apply movement in grid coordinates
                 switch (event.key) {
                     case 'ArrowLeft':
@@ -368,11 +375,11 @@ function handleKeyboardMovement(event: KeyboardEvent): void {
                         currentGridY -= increment;
                         break;
                 }
-                
+
                 // Ensure coordinates stay within bounds (-5 to 5)
                 currentGridX = Math.max(-5, Math.min(5, currentGridX));
                 currentGridY = Math.max(-5, Math.min(5, currentGridY));
-                
+
                 // Verify movement was actually possible
                 if (currentGridX === originalX && currentGridY === originalY) {
                     if (DEBUG) {
@@ -380,21 +387,23 @@ function handleKeyboardMovement(event: KeyboardEvent): void {
                     }
                     return;
                 }
-                
+
                 // Convert back to pixels
                 const newLeft = coordinateToPixel(currentGridX);
                 const newTop = coordinateToPixel(-currentGridY);
-                
+
                 // Update position
                 dot.style.left = `${newLeft}px`;
                 dot.style.top = `${newTop}px`;
-                
+
+                console.log('Keyboard moved dot:', dot.getAttribute('data-dot-id'));
+
                 // Update coordinates text with precise formatting
                 const coordsElement = dot.querySelector('.dot-coordinates');
                 if (coordsElement) {
                     coordsElement.textContent = `(${currentGridX.toFixed(1)}, ${currentGridY.toFixed(1)})`;
                 }
-                
+
                 // Update visual elements
                 updateConnectingLine(dot);
                 if (dot.classList.contains('selected')) {
@@ -409,6 +418,16 @@ function handleKeyboardMovement(event: KeyboardEvent): void {
                     });
                 }
 
+                // Add to groupedMoves for group undo
+                const previousState = previousStates.find(ps => ps.element === dot)?.state;
+                if (previousState) {
+                    groupedMoves.push({
+                        dotId: dot.getAttribute('data-dot-id') || generateDotId(),
+                        previousState,
+                        newState: recordDotState(dot)
+                    });
+                }
+
             } catch (error) {
                 console.error('Error moving individual dot:', error);
                 if (error instanceof Error) {
@@ -420,21 +439,15 @@ function handleKeyboardMovement(event: KeyboardEvent): void {
                 }
             }
         });
-        
-        // Add move to undo history for each dot that actually moved
-        previousStates.forEach(({ element, state }) => {
-            const newState = recordDotState(element);
-            // Only add to undo history if the dot actually moved
-            if (newState.x !== state.x || newState.y !== state.y) {
-                addToUndoHistory({
-                    type: 'move',
-                    dotId: element.getAttribute('data-dot-id') || generateDotId(),
-                    previousState: state,
-                    newState: newState
-                });
-            }
-        });
-        
+
+        // Add groupMove to undo history
+        if (groupedMoves.length > 1) {
+            addToUndoHistory({type: 'groupMove', groupedMoves});
+        } else if (groupedMoves.length === 1) {
+            // If only one dot was moved, add a regular 'move' action
+            addToUndoHistory({type: 'move', ...groupedMoves[0]});
+        }
+
         // Log movement for debugging
         debouncedLog('handleKeyboardMovement triggered');
 
@@ -595,6 +608,7 @@ function mouseMove(event: MouseEvent) {
 
 function mouseUp(event: MouseEvent) {
     log('mouseUp');
+
     if (tpf.isDragging) {
         tpf.isDragging = false;
 
@@ -606,7 +620,7 @@ function mouseUp(event: MouseEvent) {
             const groupedMoves: DotStateChange[] = Array.from(selectedDots).map(dot => {
                 const dotEl = dot as HTMLElement;
                 const dotId = dotEl.getAttribute('data-dot-id') || generateDotId();
-                
+
                 return {
                     dotId,
                     previousState: recordDotState(dotEl),
@@ -619,15 +633,18 @@ function mouseUp(event: MouseEvent) {
                 type: 'groupMove',
                 groupedMoves
             });
+
+            console.log('Undo history after adding groupMove:', undoHistory);
+
         } else if (selectedDots.length === 1) {
-            // Handle single dot movement as before
+            // Handle single dot movement 
             const dotEl = selectedDots[0] as HTMLElement;
             const dotId = dotEl.getAttribute('data-dot-id');
-            
+
             if (!dotId) {
                 dotEl.setAttribute('data-dot-id', generateDotId());
             }
-            
+
             addToUndoHistory({
                 type: 'move',
                 dotId: dotEl.getAttribute('data-dot-id')!,
@@ -635,10 +652,9 @@ function mouseUp(event: MouseEvent) {
                 newState: recordDotState(dotEl)
             });
         }
-        
+
         // Get all current dots and save only after drag is complete
         const dots = getAllDots();
-
         dotsSave(dots).catch(error => {
             console.error('Error saving dots:', error);
         });
@@ -648,10 +664,10 @@ function mouseUp(event: MouseEvent) {
             const moveEvent = new CustomEvent('dotChanged', { bubbles: true });
             tpf.currentDot.dispatchEvent(moveEvent);
         }
-        
+
         tpf.currentDot = null;
         tpf.skipGraphClick = true;
-        
+
         setTimeout(() => {
             tpf.skipGraphClick = false;
         }, 0);
