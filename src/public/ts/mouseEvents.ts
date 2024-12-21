@@ -1,12 +1,12 @@
-import { tpf } from "./data";
-import { COORDINATE_STEP, LABEL_CONNECTION } from './constants';
+import { COORDINATE_STEP, LABEL_CONNECTION, DEBUG} from './constants';
 import { coordinateToPixel, pixelToCoordinate, normalizeCoordinate } from './createTickMarks';
-import { recordDotState, generateDotId, addToUndoHistory } from "./data";
-import { dotsSave } from "./dotsSave";
-import log from "./util.log";
+import { tpf, recordDotState, generateDotId, addToUndoHistory } from "./data";
 import { adjustHoverBox, adjustSelectedBox } from './dotsCreate';
-import { updateConnectingLine } from './utils';
+import { dotsSave } from "./dotsSave";
 import { throttle, debounce } from './keyboardUtils';
+import {DotState, DotStateChange, UndoAction, TPF} from './types';
+import log from "./util.log";
+import { updateConnectingLine } from './utils';
 
 function ensureHTMLElement(element: Element): HTMLElement {
     if (element instanceof HTMLElement) {
@@ -103,24 +103,6 @@ document.addEventListener('keydown', (event) => {
     handleKeyboardDelete(event);
 });
 
-// Centralized state for dot positions
-interface DotState {
-    originalGridX: number;
-    originalGridY: number;
-    totalDeltaX: number;
-    totalDeltaY: number;
-    currentGridX: number;
-    currentGridY: number;
-}
-
-const dotState: DotState = {
-    originalGridX: 0,
-    originalGridY: 0,
-    totalDeltaX: 0,
-    totalDeltaY: 0,
-    currentGridX: 0,
-    currentGridY: 0,
-};
 
 // Create debounced log function
 const debouncedLog = debounce((message: string) => {
@@ -309,87 +291,168 @@ const throttledMouseMove = throttle((event: MouseEvent) => {
 
 // Main keyboard handler
 function handleKeyboardMovement(event: KeyboardEvent): void {
+    // Check if this is an arrow key movement
     const isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key);
     
     // Get all selected dots, including both single and multi-selected
     const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+    const hasSelectedDots = selectedDots.length > 0;
     
-    if (!isArrowKey || selectedDots.length === 0) {
+    // Log initial state for debugging
+    if (DEBUG) {
+        console.log('Keyboard movement:', {
+            key: event.key,
+            selectedDots: selectedDots.length,
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey
+        });
+    }
+    
+    if (!isArrowKey || !hasSelectedDots) {
         return;
     }
 
+    // Prevent default arrow key behavior
     event.preventDefault();
     
-    // Determine increment based on key combination
-    let increment;
-    if (event.ctrlKey && event.shiftKey) {
-        increment = 0.01;
-    } else if (event.ctrlKey) {
-        increment = 0.5;
-    } else {
-        increment = COORDINATE_STEP;
-    }
+    try {
+        // Store previous states before movement for undo functionality
+        const previousStates = Array.from(selectedDots).map(dot => ({
+            element: dot as HTMLElement,
+            state: recordDotState(dot as HTMLElement)
+        }));
+        
+        // Determine increment based on key combination
+        let increment;
+        if (event.ctrlKey && event.shiftKey) {
+            increment = 0.01;  // Fine control
+        } else if (event.ctrlKey) {
+            increment = 0.5;   // Medium control
+        } else {
+            increment = COORDINATE_STEP;  // Normal control
+        }
 
-    // Move all selected dots
-    selectedDots.forEach((selectedDot) => {
-        const dot = selectedDot as HTMLDivElement;
-        
-        // Get current position using parseFloat to preserve decimals
-        const currentLeft = parseFloat(dot.style.left) || 0;
-        const currentTop = parseFloat(dot.style.top) || 0;
-        
-        // Convert current pixel position to grid coordinates
-        let currentGridX = pixelToCoordinate(currentLeft);
-        let currentGridY = -pixelToCoordinate(currentTop);
-        
-        // Apply movement in grid coordinates
-        switch (event.key) {
-            case 'ArrowLeft':
-                currentGridX -= increment;
-                break;
-            case 'ArrowRight':
-                currentGridX += increment;
-                break;
-            case 'ArrowUp':
-                currentGridY += increment;
-                break;
-            case 'ArrowDown':
-                currentGridY -= increment;
-                break;
-        }
-        
-        // Ensure coordinates stay within bounds (-5 to 5)
-        currentGridX = Math.max(-5, Math.min(5, currentGridX));
-        currentGridY = Math.max(-5, Math.min(5, currentGridY));
-        
-        // Convert back to pixels
-        const newLeft = coordinateToPixel(currentGridX);
-        const newTop = coordinateToPixel(-currentGridY);
-        
-        // Update position
-        dot.style.left = `${newLeft}px`;
-        dot.style.top = `${newTop}px`;
-        
-        // Update coordinates text with precise formatting
-        const coordsElement = dot.querySelector('.dot-coordinates');
-        if (coordsElement) {
-            coordsElement.textContent = `(${currentGridX.toFixed(1)}, ${currentGridY.toFixed(1)})`;
-        }
-        
-        // Update connecting line and hover box
-        updateConnectingLine(dot);
-        if (dot.classList.contains('selected')) {
-            adjustHoverBox(dot);
-        }
-    });
-    
-    // Log movement
-    debouncedLog('handleKeyboardMovement triggered');
+        // Process each selected dot
+        selectedDots.forEach((selectedDot) => {
+            const dot = selectedDot as HTMLDivElement;
+            if (!dot) {
+                console.warn('Invalid dot element encountered');
+                return;
+            }
+            
+            try {
+                // Get current position using parseFloat to preserve decimals
+                const currentLeft = parseFloat(dot.style.left) || 0;
+                const currentTop = parseFloat(dot.style.top) || 0;
+                
+                // Convert current pixel position to grid coordinates
+                let currentGridX = pixelToCoordinate(currentLeft);
+                let currentGridY = -pixelToCoordinate(currentTop);
+                
+                // Store original position for validation
+                const originalX = currentGridX;
+                const originalY = currentGridY;
+                
+                // Apply movement in grid coordinates
+                switch (event.key) {
+                    case 'ArrowLeft':
+                        currentGridX -= increment;
+                        break;
+                    case 'ArrowRight':
+                        currentGridX += increment;
+                        break;
+                    case 'ArrowUp':
+                        currentGridY += increment;
+                        break;
+                    case 'ArrowDown':
+                        currentGridY -= increment;
+                        break;
+                }
+                
+                // Ensure coordinates stay within bounds (-5 to 5)
+                currentGridX = Math.max(-5, Math.min(5, currentGridX));
+                currentGridY = Math.max(-5, Math.min(5, currentGridY));
+                
+                // Verify movement was actually possible
+                if (currentGridX === originalX && currentGridY === originalY) {
+                    if (DEBUG) {
+                        console.log('No movement possible - dot at boundary');
+                    }
+                    return;
+                }
+                
+                // Convert back to pixels
+                const newLeft = coordinateToPixel(currentGridX);
+                const newTop = coordinateToPixel(-currentGridY);
+                
+                // Update position
+                dot.style.left = `${newLeft}px`;
+                dot.style.top = `${newTop}px`;
+                
+                // Update coordinates text with precise formatting
+                const coordsElement = dot.querySelector('.dot-coordinates');
+                if (coordsElement) {
+                    coordsElement.textContent = `(${currentGridX.toFixed(1)}, ${currentGridY.toFixed(1)})`;
+                }
+                
+                // Update visual elements
+                updateConnectingLine(dot);
+                if (dot.classList.contains('selected')) {
+                    adjustHoverBox(dot);
+                }
 
-    // Trigger autosave after movement
-    const urlParts = window.location.pathname.split('/');
-    if (urlParts.length > 2 && urlParts[1] !== '') {
-        autosaveDots();
+                if (DEBUG) {
+                    console.log('Dot moved:', {
+                        id: dot.getAttribute('data-dot-id'),
+                        from: { x: originalX, y: originalY },
+                        to: { x: currentGridX, y: currentGridY }
+                    });
+                }
+
+            } catch (error) {
+                console.error('Error moving individual dot:', error);
+                if (error instanceof Error) {
+                    console.error('Movement error details:', {
+                        message: error.message,
+                        stack: error.stack,
+                        dotId: dot.getAttribute('data-dot-id')
+                    });
+                }
+            }
+        });
+        
+        // Add move to undo history for each dot that actually moved
+        previousStates.forEach(({ element, state }) => {
+            const newState = recordDotState(element);
+            // Only add to undo history if the dot actually moved
+            if (newState.x !== state.x || newState.y !== state.y) {
+                addToUndoHistory({
+                    type: 'move',
+                    dotId: element.getAttribute('data-dot-id') || generateDotId(),
+                    previousState: state,
+                    newState: newState
+                });
+            }
+        });
+        
+        // Log movement for debugging
+        debouncedLog('handleKeyboardMovement triggered');
+
+        // Trigger autosave after movement if not on homepage
+        const urlParts = window.location.pathname.split('/');
+        if (urlParts.length > 2 && urlParts[1] !== '') {
+            autosaveDots();
+        }
+
+    } catch (error) {
+        console.error('Error in keyboard movement:', error);
+        if (error instanceof Error) {
+            console.error('Keyboard movement error details:', {
+                message: error.message,
+                stack: error.stack,
+                selectedDots: selectedDots.length
+            });
+        }
     }
 }
 
@@ -424,6 +487,174 @@ function handleKeyboardDelete(event: KeyboardEvent) {
     const urlParts = window.location.pathname.split('/');
     if (urlParts.length > 2 && urlParts[1] !== '') {
         autosaveDots();
+    }
+}
+
+function mouseMove(event: MouseEvent) {
+    // Handle label box dragging separately and without throttling
+    if (tpf.isLabelBoxDragging && tpf.currentLabelBox) {
+        handleLabelBoxDrag(event);
+        return;
+    }
+
+    // Skip early if not doing anything
+    if (!tpf.isDragging || tpf.currentDot?.classList.contains('editing')) {
+        return;
+    }
+
+    // Only log when actually dragging dots
+    if (tpf.isDragging && tpf.currentDot) {
+        console.log('Moving dot(s):', {
+            selectedDots: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
+            isDragging: true
+        });
+    }
+
+    const xyPlane = document.getElementById('xy-plane');
+    if (!xyPlane) return;
+
+    const rect = xyPlane.getBoundingClientRect();
+    const newLeft = event.clientX - rect.left;
+    const newTop = event.clientY - rect.top;
+
+    // Get all selected dots
+    const selectedDots = document.querySelectorAll('.dot-container.selected');
+
+    // If we have multiple selected dots
+    if (selectedDots.length > 1) {
+        // Calculate movement delta based on current dot
+        const currentLeft = parseFloat(tpf.currentDot?.style.left || '0');
+        const currentTop = parseFloat(tpf.currentDot?.style.top || '0');
+        const deltaX = newLeft - currentLeft;
+        const deltaY = newTop - currentTop;
+
+        // Move all selected dots by the same delta
+        selectedDots.forEach(dot => {
+            const dotEl = dot as HTMLElement;
+            const originalLeft = parseFloat(dotEl.style.left || '0');
+            const originalTop = parseFloat(dotEl.style.top || '0');
+            
+            const finalLeft = originalLeft + deltaX;
+            const finalTop = originalTop + deltaY;
+
+            // Convert to grid coordinates
+            const x = pixelToCoordinate(finalLeft);
+            const y = -pixelToCoordinate(finalTop);
+
+            // Normalize coordinates
+            const normalizedX = Math.max(-5, Math.min(5, x));
+            const normalizedY = Math.max(-5, Math.min(5, y));
+
+            // Convert back to pixels
+            const finalPixelLeft = coordinateToPixel(normalizedX);
+            const finalPixelTop = coordinateToPixel(-normalizedY);
+
+            // Update position
+            dotEl.style.left = `${finalPixelLeft}px`;
+            dotEl.style.top = `${finalPixelTop}px`;
+
+            // Update coordinates display
+            const coordsElement = dotEl.querySelector('.dot-coordinates');
+            if (coordsElement) {
+                coordsElement.textContent = `(${normalizedX.toFixed(1)}, ${normalizedY.toFixed(1)})`;
+            }
+
+            updateConnectingLine(dotEl);
+
+            if (dotEl.classList.contains('selected')) {
+                adjustHoverBox(dotEl);
+            }
+        });
+    } 
+    // Single dot movement
+    else if (tpf.currentDot && isWithinBounds(newLeft, newTop, rect)) {
+        const x = pixelToCoordinate(newLeft);
+        const y = -pixelToCoordinate(newTop);
+        
+        const normalizedX = normalizeCoordinate(x);
+        const normalizedY = normalizeCoordinate(y);
+        
+        const finalLeft = coordinateToPixel(normalizedX);
+        const finalTop = coordinateToPixel(-normalizedY);
+        
+        tpf.currentDot.style.left = `${finalLeft}px`;
+        tpf.currentDot.style.top = `${finalTop}px`;
+        
+        const coordsElement = tpf.currentDot.querySelector('.dot-coordinates');
+        if (coordsElement) {
+            coordsElement.textContent = `(${normalizedX.toFixed(1)}, ${normalizedY.toFixed(1)})`;
+        }
+
+        updateConnectingLine(tpf.currentDot);
+        
+        if (tpf.currentDot.classList.contains('selected')) {
+            adjustHoverBox(tpf.currentDot);
+        }
+    }
+}
+
+function mouseUp(event: MouseEvent) {
+    log('mouseUp');
+    if (tpf.isDragging) {
+        tpf.isDragging = false;
+
+        // Get all selected dots
+        const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
+
+        if (selectedDots.length > 1) {
+            // Handle multiple dots - group them into a single undo action
+            const groupedMoves: DotStateChange[] = Array.from(selectedDots).map(dot => {
+                const dotEl = dot as HTMLElement;
+                const dotId = dotEl.getAttribute('data-dot-id') || generateDotId();
+                
+                return {
+                    dotId,
+                    previousState: recordDotState(dotEl),
+                    newState: recordDotState(dotEl)
+                };
+            });
+
+            // Add single grouped action to undo history
+            addToUndoHistory({
+                type: 'groupMove',
+                groupedMoves
+            });
+        } else if (selectedDots.length === 1) {
+            // Handle single dot movement as before
+            const dotEl = selectedDots[0] as HTMLElement;
+            const dotId = dotEl.getAttribute('data-dot-id');
+            
+            if (!dotId) {
+                dotEl.setAttribute('data-dot-id', generateDotId());
+            }
+            
+            addToUndoHistory({
+                type: 'move',
+                dotId: dotEl.getAttribute('data-dot-id')!,
+                previousState: recordDotState(dotEl),
+                newState: recordDotState(dotEl)
+            });
+        }
+        
+        // Get all current dots and save only after drag is complete
+        const dots = getAllDots();
+
+        dotsSave(dots).catch(error => {
+            console.error('Error saving dots:', error);
+        });
+
+        // Dispatch change event
+        if (tpf.currentDot) {
+            const moveEvent = new CustomEvent('dotChanged', { bubbles: true });
+            tpf.currentDot.dispatchEvent(moveEvent);
+        }
+        
+        tpf.currentDot = null;
+        tpf.skipGraphClick = true;
+        
+        setTimeout(() => {
+            tpf.skipGraphClick = false;
+        }, 0);
     }
 }
 
@@ -616,149 +847,6 @@ function handleLabelBoxDrag(event: MouseEvent) {
         dotContainer.setAttribute('data-line-length', distance.toString());
     }
 }
-
-function mouseMove(event: MouseEvent) {
-    // Handle label box dragging separately and without throttling
-    if (tpf.isLabelBoxDragging && tpf.currentLabelBox) {
-        handleLabelBoxDrag(event);
-        return;
-    }
-
-    // Skip early if not doing anything
-    if (!tpf.isDragging || tpf.currentDot?.classList.contains('editing')) {
-        return;
-    }
-
-    // Only log when actually dragging dots
-    if (tpf.isDragging && tpf.currentDot) {
-        console.log('Moving dot(s):', {
-            selectedDots: document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected').length,
-            isDragging: true
-        });
-    }
-
-    const xyPlane = document.getElementById('xy-plane');
-    if (!xyPlane) return;
-
-    const rect = xyPlane.getBoundingClientRect();
-    const newLeft = event.clientX - rect.left;
-    const newTop = event.clientY - rect.top;
-
-    // Get all selected dots
-    const selectedDots = document.querySelectorAll('.dot-container.selected');
-
-    // If we have multiple selected dots
-    if (selectedDots.length > 1) {
-        // Calculate movement delta based on current dot
-        const currentLeft = parseFloat(tpf.currentDot?.style.left || '0');
-        const currentTop = parseFloat(tpf.currentDot?.style.top || '0');
-        const deltaX = newLeft - currentLeft;
-        const deltaY = newTop - currentTop;
-
-        // Move all selected dots by the same delta
-        selectedDots.forEach(dot => {
-            const dotEl = dot as HTMLElement;
-            const originalLeft = parseFloat(dotEl.style.left || '0');
-            const originalTop = parseFloat(dotEl.style.top || '0');
-            
-            const finalLeft = originalLeft + deltaX;
-            const finalTop = originalTop + deltaY;
-
-            // Convert to grid coordinates
-            const x = pixelToCoordinate(finalLeft);
-            const y = -pixelToCoordinate(finalTop);
-
-            // Normalize coordinates
-            const normalizedX = Math.max(-5, Math.min(5, x));
-            const normalizedY = Math.max(-5, Math.min(5, y));
-
-            // Convert back to pixels
-            const finalPixelLeft = coordinateToPixel(normalizedX);
-            const finalPixelTop = coordinateToPixel(-normalizedY);
-
-            // Update position
-            dotEl.style.left = `${finalPixelLeft}px`;
-            dotEl.style.top = `${finalPixelTop}px`;
-
-            // Update coordinates display
-            const coordsElement = dotEl.querySelector('.dot-coordinates');
-            if (coordsElement) {
-                coordsElement.textContent = `(${normalizedX.toFixed(1)}, ${normalizedY.toFixed(1)})`;
-            }
-
-            updateConnectingLine(dotEl);
-
-            if (dotEl.classList.contains('selected')) {
-                adjustHoverBox(dotEl);
-            }
-        });
-    } 
-    // Single dot movement
-    else if (tpf.currentDot && isWithinBounds(newLeft, newTop, rect)) {
-        const x = pixelToCoordinate(newLeft);
-        const y = -pixelToCoordinate(newTop);
-        
-        const normalizedX = normalizeCoordinate(x);
-        const normalizedY = normalizeCoordinate(y);
-        
-        const finalLeft = coordinateToPixel(normalizedX);
-        const finalTop = coordinateToPixel(-normalizedY);
-        
-        tpf.currentDot.style.left = `${finalLeft}px`;
-        tpf.currentDot.style.top = `${finalTop}px`;
-        
-        const coordsElement = tpf.currentDot.querySelector('.dot-coordinates');
-        if (coordsElement) {
-            coordsElement.textContent = `(${normalizedX.toFixed(1)}, ${normalizedY.toFixed(1)})`;
-        }
-
-        updateConnectingLine(tpf.currentDot);
-        
-        if (tpf.currentDot.classList.contains('selected')) {
-            adjustHoverBox(tpf.currentDot);
-        }
-    }
-}
-
-function mouseUp(event: MouseEvent) {
-    log('mouseUp');
-    if (tpf.isDragging && tpf.currentDot) {
-        tpf.isDragging = false;
-        
-        const previousState = recordDotState(tpf.currentDot);
-        
-        // Ensure the dot has a unique ID
-        if (!tpf.currentDot.getAttribute('data-dot-id')) {
-            tpf.currentDot.setAttribute('data-dot-id', generateDotId());
-        }
-        
-        // Add to undo history
-        addToUndoHistory({
-            type: 'move',
-            dotId: tpf.currentDot.getAttribute('data-dot-id')!,
-            previousState,
-            newState: recordDotState(tpf.currentDot)
-        });
-        
-        // Get all current dots and save only after drag is complete
-        const dots = getAllDots();
-        dotsSave(dots).catch(error => {
-            console.error('Error saving dots:', error);
-        });
-        
-        // Dispatch change event
-        const moveEvent = new CustomEvent('dotChanged', { bubbles: true });
-        tpf.currentDot.dispatchEvent(moveEvent);
-        
-        tpf.currentDot = null;
-        tpf.skipGraphClick = true;
-        
-        setTimeout(() => {
-            tpf.skipGraphClick = false;
-        }, 0);
-    }
-}
-
 
 function isWithinBounds(x: number, y: number, rect: DOMRect): boolean {
     return x >= 0 && x <= rect.width && y >= 0 && y <= rect.height;

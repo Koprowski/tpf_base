@@ -77,12 +77,23 @@ function addToUndoHistory(action) {
 function recordDotState(dot) {
     var labelEl = dot.querySelector('.user-dot-label');
     var coordsElement = dot.querySelector('.dot-coordinates');
+    var labelContainer = dot.querySelector('.label-container');
+    var line = dot.querySelector('.connecting-line');
+    var labelOffset = labelContainer ? {
+        x: parseFloat(labelContainer.style.left) || LABEL_CONNECTION.DEFAULT_LENGTH,
+        y: parseFloat(labelContainer.style.top) || -LABEL_CONNECTION.DEFAULT_LENGTH
+    } : undefined;
+    var lineLength = line ? parseFloat(dot.getAttribute('data-line-length') || '') : undefined;
+    var lineAngle = line ? parseFloat(dot.getAttribute('data-line-angle') || '') : undefined;
     return {
         x: dot.style.left,
         y: dot.style.top,
         coordinates: (coordsElement === null || coordsElement === void 0 ? void 0 : coordsElement.textContent) || '',
         label: (labelEl === null || labelEl === void 0 ? void 0 : labelEl.textContent) || '',
-        id: dot.getAttribute('data-dot-id') || generateDotId()
+        id: dot.getAttribute('data-dot-id') || generateDotId(),
+        labelOffset: labelOffset,
+        lineLength: lineLength,
+        lineAngle: lineAngle
     };
 }
 function updateDotState(dot, state) {

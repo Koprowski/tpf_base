@@ -2,40 +2,7 @@ import log from "./util.log";
 import { updateConnectingLine } from './utils';
 import { adjustHoverBox, createLabelEditor } from './dotsCreate';
 import { LABEL_CONNECTION } from './constants';
-
-interface TPF {
-    skipGraphClick: boolean;
-    isDragging: boolean;
-    debug: boolean;
-    offsetX: number;
-    offsetY: number;
-    currentDot: HTMLDivElement | null | undefined;
-    selectedDot: HTMLDivElement | null;
-    xAxisWidth: number;
-    yAxisHeight: number;
-    lastMouseUpdate?: number;
-    isLabelBoxDragging: boolean;  // New property for label box dragging
-    currentLabelBox: HTMLDivElement | null;  // New property for current label box
-    labelBoxOffset: { x: number; y: number }; // New property for label box drag offset
-}
-
-interface DotState {
-    x: string;
-    y: string;
-    coordinates: string;
-    label: string;
-    id?: string;
-    labelOffset?: { x: number; y: number };
-    lineLength?: number;
-    lineAngle?: number;
-}
-
-interface UndoAction {
-    type: 'move' | 'delete' | 'create' | 'labelMove';  // Added labelMove type
-    dotId: string;
-    previousState?: DotState;
-    newState?: DotState;
-}
+import { DotState, TPF, UndoAction, DotStateChange } from './types';
 
 // Initialize undo history
 const undoHistory: UndoAction[] = [];
@@ -82,12 +49,26 @@ function addToUndoHistory(action: UndoAction) {
 function recordDotState(dot: HTMLElement): DotState {
     const labelEl = dot.querySelector('.user-dot-label');
     const coordsElement = dot.querySelector('.dot-coordinates');
+    const labelContainer = dot.querySelector('.label-container') as HTMLElement;
+    const line = dot.querySelector('.connecting-line') as HTMLElement;
+    
+    const labelOffset = labelContainer ? {
+        x: parseFloat(labelContainer.style.left) || LABEL_CONNECTION.DEFAULT_LENGTH,
+        y: parseFloat(labelContainer.style.top) || -LABEL_CONNECTION.DEFAULT_LENGTH
+    } : undefined;
+
+    const lineLength = line ? parseFloat(dot.getAttribute('data-line-length') || '') : undefined;
+    const lineAngle = line ? parseFloat(dot.getAttribute('data-line-angle') || '') : undefined;
+
     return {
         x: dot.style.left,
         y: dot.style.top,
         coordinates: coordsElement?.textContent || '',
         label: labelEl?.textContent || '',
-        id: dot.getAttribute('data-dot-id') || generateDotId()
+        id: dot.getAttribute('data-dot-id') || generateDotId(),
+        labelOffset,
+        lineLength,
+        lineAngle
     };
 }
 
@@ -110,7 +91,6 @@ function updateDotState(dot: HTMLElement, state: DotState) {
 function handleUndo(event: KeyboardEvent) {
     if (event.ctrlKey && event.key.toLowerCase() === 'z') {
         event.preventDefault();
-        
         const lastAction = undoHistory.pop();
         if (!lastAction) return;
 
@@ -125,13 +105,13 @@ function handleUndo(event: KeyboardEvent) {
                         if (dot) {
                             // Store current state for potential redo
                             const currentState = recordDotState(dot);
-                            
+
                             // Update position and state
                             updateDotState(dot, lastAction.previousState);
-                            
+
                             // Update connecting line
                             updateConnectingLine(dot);
-                            
+
                             // Update hover box if selected
                             if (dot.classList.contains('selected')) {
                                 adjustHoverBox(dot);
@@ -141,19 +121,18 @@ function handleUndo(event: KeyboardEvent) {
                         }
                     }
                     break;
-                    
                 case 'delete':
                     if (lastAction.previousState) {
                         // Create new dot with full state
                         const newDot = createDotElement(lastAction.previousState);
-                        
+
                         // Set the position explicitly
                         newDot.style.left = lastAction.previousState.x;
                         newDot.style.top = lastAction.previousState.y;
                         
                         // Add to DOM
                         xyPlane.appendChild(newDot);
-                        
+
                         // Update connecting line and layout
                         requestAnimationFrame(() => {
                             updateConnectingLine(newDot);
@@ -161,17 +140,16 @@ function handleUndo(event: KeyboardEvent) {
                                 adjustHoverBox(newDot);
                             }
                         });
-                        
+
                         autosaveAfterUndo();
                     }
                     break;
-                    
                 case 'create':
                     const dotToRemove = document.querySelector(`[data-dot-id="${lastAction.dotId}"]`);
                     if (dotToRemove) {
                         // Store state before removal for potential redo
                         const stateBeforeRemoval = recordDotState(dotToRemove as HTMLElement);
-                        
+
                         // If this was the selected dot, clear selection
                         if (tpf.selectedDot === dotToRemove) {
                             tpf.selectedDot = null;
@@ -179,13 +157,13 @@ function handleUndo(event: KeyboardEvent) {
 
                         // Remove any selection classes first
                         dotToRemove.classList.remove('selected', 'multi-selected', 'editing');
-                        
+
                         // Remove the dot
                         dotToRemove.remove();
+
                         autosaveAfterUndo();
                     }
                     break;
-                    
                 case 'labelMove':
                     if (lastAction.previousState) {
                         const dot = document.querySelector(`[data-dot-id="${lastAction.dotId}"]`) as HTMLElement;
