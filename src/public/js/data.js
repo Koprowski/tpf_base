@@ -153,6 +153,13 @@ function handleUndo(event) {
                     if (dotToRemove) {
                         // Store state before removal for potential redo
                         var stateBeforeRemoval = recordDotState(dotToRemove);
+                        // If this was the selected dot, clear selection
+                        if (tpf.selectedDot === dotToRemove) {
+                            tpf.selectedDot = null;
+                        }
+                        // Remove any selection classes first
+                        dotToRemove.classList.remove('selected', 'multi-selected', 'editing');
+                        // Remove the dot
                         dotToRemove.remove();
                         autosaveAfterUndo();
                     }

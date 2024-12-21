@@ -172,6 +172,15 @@ function handleUndo(event: KeyboardEvent) {
                         // Store state before removal for potential redo
                         const stateBeforeRemoval = recordDotState(dotToRemove as HTMLElement);
                         
+                        // If this was the selected dot, clear selection
+                        if (tpf.selectedDot === dotToRemove) {
+                            tpf.selectedDot = null;
+                        }
+
+                        // Remove any selection classes first
+                        dotToRemove.classList.remove('selected', 'multi-selected', 'editing');
+                        
+                        // Remove the dot
                         dotToRemove.remove();
                         autosaveAfterUndo();
                     }

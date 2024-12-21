@@ -1,4 +1,4 @@
-import { tpf } from "./data";
+import { tpf, addToUndoHistory } from "./data";
 import { removeAnyExistingElementsWithClassName } from "./removeAnyExistingElementsWithClassName";
 import log from "./util.log";
 import { mouseDown, mouseUp, mouseMove,isSelecting, handleMultiDotSelection } from "./mouseEvents";
@@ -133,10 +133,7 @@ function dotsCreate() {
 
     function xyPlaneClickHandler(event: MouseEvent) {
         const target = event.target as HTMLElement;
-        const xyPlane = document.getElementById('xy-plane');
-        if (!xyPlane) return;
         
-        // Skip if clicking on dot elements
         if (target.classList.contains('dot') || 
             target.classList.contains('dot-container') ||
             target.classList.contains('coordinate-text') ||
@@ -144,12 +141,12 @@ function dotsCreate() {
             target.classList.contains('dot-coordinates')) {
             return;
         }
-
+    
         // If there was any drag movement, don't create a dot
         if (isSelecting || tpf.isDragging) {
             return;
         }
-
+    
         // Check for any selected or multi-selected dots
         const selectedDots = document.querySelectorAll('.dot-container.selected, .dot-container.multi-selected');
         
@@ -164,7 +161,7 @@ function dotsCreate() {
             tpf.selectedDot = null;
             return;
         }
-
+    
         const rawCoords = getGraphRawCoordinates(event);
         const graphCoords = {
             x: pixelToCoordinate(rawCoords.x),
@@ -175,17 +172,18 @@ function dotsCreate() {
             x: coordinateToPixel(graphCoords.x),
             y: coordinateToPixel(-graphCoords.y)
         };
-
+    
         const adjustedPosition = {
             x: pixelPosition.x,
             y: pixelPosition.y
         };
-
+    
         const dotId = generateDotId();
         const savedDot: SavedDot = {
             x: adjustedPosition.x + 'px',
             y: adjustedPosition.y + 'px',
             coordinates: `(${graphCoords.x.toFixed(2)}, ${graphCoords.y.toFixed(2)})`,
+            displayCoordinates: `(${graphCoords.x.toFixed(1)}, ${graphCoords.y.toFixed(1)})`,
             label: '',
             id: dotId,
             labelOffset: {
@@ -193,19 +191,29 @@ function dotsCreate() {
                 y: -LABEL_CONNECTION.DEFAULT_LENGTH
             }
         };
-
+    
         if (isClickInsideGraph(graphCoords)) {
-            
-            if (tpf.currentDot === null && !isDragging) {
+            if (tpf.currentDot === null) {
                 try {
                     const dot = loadSavedDots(savedDot);
+                    const xyPlane = document.getElementById('xy-plane');
+                    if (!xyPlane) return;
+    
+                    // Add dot to DOM
                     xyPlane.appendChild(dot);
                     
                     // Update connecting line after adding to DOM
                     requestAnimationFrame(() => {
                         updateConnectingLine(dot);
                     });
-
+    
+                    // Add to undo history
+                    addToUndoHistory({
+                        type: 'create',
+                        dotId: dotId,
+                        newState: savedDot
+                    });
+    
                     // Start label editing
                     const labelElement = dot.querySelector('.user-dot-label') as HTMLElement;
                     if (labelElement) {
@@ -213,7 +221,7 @@ function dotsCreate() {
                             createLabelEditor(labelElement, dot);
                         }, 0);
                     }
-
+    
                     // Fire creation event
                     const createAction = {
                         type: 'create' as const,
@@ -224,7 +232,7 @@ function dotsCreate() {
                         bubbles: true,
                         detail: createAction
                     }));
-
+    
                     // Autosave if not on homepage
                     const urlParts = window.location.pathname.split('/');
                     if (urlParts.length > 2 && urlParts[1] !== '') {

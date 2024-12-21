@@ -34,7 +34,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-import { tpf } from "./data";
+import { tpf, addToUndoHistory } from "./data";
 import { removeAnyExistingElementsWithClassName } from "./removeAnyExistingElementsWithClassName";
 import log from "./util.log";
 import { mouseDown, mouseUp, mouseMove, isSelecting } from "./mouseEvents";
@@ -147,10 +147,6 @@ function dotsCreate() {
     });
     function xyPlaneClickHandler(event) {
         var target = event.target;
-        var xyPlane = document.getElementById('xy-plane');
-        if (!xyPlane)
-            return;
-        // Skip if clicking on dot elements
         if (target.classList.contains('dot') ||
             target.classList.contains('dot-container') ||
             target.classList.contains('coordinate-text') ||
@@ -193,6 +189,7 @@ function dotsCreate() {
             x: adjustedPosition.x + 'px',
             y: adjustedPosition.y + 'px',
             coordinates: "(".concat(graphCoords.x.toFixed(2), ", ").concat(graphCoords.y.toFixed(2), ")"),
+            displayCoordinates: "(".concat(graphCoords.x.toFixed(1), ", ").concat(graphCoords.y.toFixed(1), ")"),
             label: '',
             id: dotId,
             labelOffset: {
@@ -201,13 +198,23 @@ function dotsCreate() {
             }
         };
         if (isClickInsideGraph(graphCoords)) {
-            if (tpf.currentDot === null && !isDragging) {
+            if (tpf.currentDot === null) {
                 try {
                     var dot_1 = loadSavedDots(savedDot);
-                    xyPlane.appendChild(dot_1);
+                    var xyPlane_1 = document.getElementById('xy-plane');
+                    if (!xyPlane_1)
+                        return;
+                    // Add dot to DOM
+                    xyPlane_1.appendChild(dot_1);
                     // Update connecting line after adding to DOM
                     requestAnimationFrame(function () {
                         updateConnectingLine(dot_1);
+                    });
+                    // Add to undo history
+                    addToUndoHistory({
+                        type: 'create',
+                        dotId: dotId,
+                        newState: savedDot
                     });
                     // Start label editing
                     var labelElement_1 = dot_1.querySelector('.user-dot-label');
