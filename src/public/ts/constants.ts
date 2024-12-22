@@ -26,7 +26,7 @@ export const LABEL_CONNECTION = {
     MIN_LINE_LENGTH: 20,  // Minimum length of connecting line
     MAX_LINE_LENGTH: 150,  // Maximum length of connecting line
     LINE_POSITION: {
-        TOP: 'calc(50% + 0px)', // Positive moves down, negative moves up
-        LEFT: 'calc(50% - 0px)' // Positive moves right, negative moves left
+        TOP: 'calc(50% + 1px)', // Positive moves down, negative moves up
+        LEFT: 'calc(50% + 1px)' // Positive moves right, negative moves left
     }
 } as const;

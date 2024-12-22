@@ -40,7 +40,7 @@ class NavigationScroller {
         if (this.pageHeader) {
             this.pageHeader.style.position = 'sticky';
             this.pageHeader.style.top = '0';
-            this.pageHeader.style.zIndex = '1000';
+            // this.pageHeader.style.zIndex = '1000';
             this.pageHeader.style.background = 'white';
             this.pageHeader.style.transition = 'height 0.2s ease-out';
         }

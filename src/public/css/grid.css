@@ -11,37 +11,60 @@
 /* Initial header state */
 .page-header-container {
     position: relative;
-    width: calc(100% + 3rem);
-    height: 3rem;
+    width: 100%;
+    min-height: 3rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
-    margin: -2.5rem 0 2.25rem -1.5rem;
+    padding: 0.5rem 1.5rem;
+    margin: 0 0 2rem 0;
     border-bottom: 1px solid #E5E7EB;
     background: white;
+    z-index: 20 !important;
 }
 
-/* Sticky state styles */
+/* Sticky state */
 .page-header-container:has(> *) {
     position: sticky;
-    top: 0;
-    z-index: 1000;
+    top: 64px;
+    z-index: 25;
 }
 
 /* When header becomes sticky */
 .page-header-container.sticky,
 .page-header-container:has(> *[style*="position: sticky"]) {
-    height: 2rem;
+    height: auto;
+    min-height: 2rem;
+    padding: 0.25rem 1.5rem;
 }
 
+/* Ensure main content stays in normal flow */
+main {
+    position: relative;
+    z-index: 1;
+    padding-top: 0 1rem;
+}
+
+/* Fixed nav */
 .fixed-nav {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    z-index: 999;
-    background: white;
+    z-index: 100;
+    background-color: white;
+    transition: transform 0.2s ease-out;
+    transform: translateY(0);
+}
+
+/* Main content wrapper */
+.max-w-4xl,
+.mx-auto {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* Title styles */
@@ -51,10 +74,10 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    max-width: 56rem; /* Tailwind's max-w-4xl */
+    max-width: 56rem;
     z-index: 10;
-    padding: 0;
-    margin-bottom: 5px;
+    padding: 0 3rem;
+    margin-bottom: 0;
 }
 
 .editable-title {
@@ -66,7 +89,7 @@
     border-radius: 4px;
     cursor: text;
     text-align: center;
-    margin: 0 ;
+    margin: 0;
     line-height: 1.2;
 }
 
@@ -86,9 +109,10 @@
     right: 1.5rem;
     display: flex;
     gap: 1.5rem;
-    z-index: 20;
+    z-index: 15;
     top: 50%;
     transform: translateY(-50%);
+    margin-right: 0;
 }
 
 /* Header line */
@@ -104,7 +128,9 @@
 
 /* Container adjustment */
 .bg-white.shadow.rounded-lg.p-6 {
-    padding-top: 0rem; 
+    padding: 0 1.5rem 2.5rem 1.5rem;
+    margin-top: 0; /* grey space between xy plane and nav bar */
+    margin-bottom: 0; /* grey space between xy plane and footer */
 }
 
 .action-link {
@@ -355,17 +381,103 @@
     transform: translate(-50%, -50%);
 }
 
+/* Base dot styles */
 .dot {
-    width: 4px;
-    height: 4px;
+    width: 6px;
+    height: 6px;
     background-color: #ff4800;
     border-radius: 50%;
     position: relative;
-    margin-top: 0px;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
 }
 
+/* Dot container positioning */
+.dot-container {
+    position: absolute;
+    display: flex;
+    transform: translate(-50%, -50%);
+    z-index: 30;
+}
+
+/* Base label container styles */
+.label-container {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 8px;
+    cursor: move;
+    white-space: nowrap;
+    display: inline-block;
+    z-index: 30;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Base connecting line styles */
+.connecting-line {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    height: 2px;
+    transform-origin: left center;
+    background-color: #d1d5db;
+    pointer-events: none;
+    z-index: 30;
+    opacity: 1;
+}
+
+/* Hover states - forced black with !important */
+.dot-container:not(.selected):not(.multi-selected):hover .dot {
+    background-color: #000 !important;
+    transform: scale(1.2);
+}
+
+.dot-container:not(.selected):not(.multi-selected):hover .connecting-line {
+    background-color: #000 !important;
+    height: 2px !important;
+    opacity: 1 !important;
+}
+
+.dot-container:not(.selected):not(.multi-selected):hover .label-container {
+    border: 2px solid #000 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Selected states */
+.dot-container.selected .dot,
+.dot-container.multi-selected .dot {
+    background-color: #3b82f6 !important;
+    opacity: 1 !important;
+    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.3) !important;
+    transform: scale(1.2); 
+}
+
+.dot-container.selected .connecting-line,
+.dot-container.multi-selected .connecting-line {
+    opacity: 1 !important;
+    background-color: #3b82f6 !important;
+    border-top: 1.8px solid #3b82f6 !important;
+    height: 2% !important;
+}
+
+.dot-container.selected .label-container,
+.dot-container.multi-selected .label-container {
+    border: 2px solid #3b82f6 !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Editing states */
+.dot-container.editing .connecting-line,
+.dot-container.editing .label-container,
+.dot-container.editing .dot {
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+    transform: none;
+    opacity: 0.6;
+}
+
+/* Label text styles */
 .coordinate-text {
     position: relative;
     left: 0px;
@@ -396,227 +508,7 @@
     line-height: 16px;
 }
 
-.dot.selected {
-    border: 2px solid blue;
-}
-
-.dot,
-.dot-coordinates,
-.user-dot-label {
-    cursor: pointer;
-}
-
-/* Menu styles */
-.edit-menu {
-    background: white;
-    border: 1px solid #ccc;
-    padding: 5px;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-}
-
-.edit-menu div {
-    padding: 5px 10px;
-    cursor: pointer;
-}
-
-.edit-menu div:hover {
-    background: #f0f0f0;
-}
-
-/* Input styles */
-.label-input {
-    font-size: 13px;
-    color: blue;
-    border: 1px solid #ccc;
-    outline: none;
-    background: white;
-    width: auto;
-    min-width: 50px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding: 0 2px;
-    margin-left: 10px;
-    position: absolute;
-    z-index: 1000;
-    height: 16px;
-    line-height: 16px;
-    pointer-events: auto;
-    box-sizing: border-box;
-}
-
-.label-input:focus {
-    background-color: rgba(200, 200, 255, 0.1);
-    border-bottom: 1px solid blue;
-}
-
-/* Container adjustment */
-.bg-white.shadow.rounded-lg.p-6 {
-    padding-top: 45px;
-    padding-bottom: 45px;
-}
-
-/* Dot Container Selection and hover states */
-
-.dot-container.editing::before {
-    border: none;
-}
-
-.dot-container.editing .dot,
-.dot-container.editing .coordinate-text {
-    pointer-events: auto;
-}
-
-.user-dot-label ~ .dot-container.selected::before,
-.dot-container.user-dot-label.selected::before {
-    border: none;
-}
-
-.dot-container:has(.label-input):hover::before,
-.dot-container:has(.label-input).selected::before {
-    border: none !important;
-}
-
-.dot-container.selected .dot,
-.dot-container.multi-selected {
-    background-color: #3b82f6;
-    transform: scale(1.2);
-}
-
-/* Disable hover effects while editing */
-.dot-container.editing .connecting-line,
-.dot-container.editing .label-container,
-.dot-container.editing .dot {
-    border-color: #e5e7eb !important;
-    box-shadow: none;
-    transform: none;
-    opacity: 0.6;
-}
-
-/* Other Styles */
-
-.edit-menu div {
-    padding: 5px 10px;
-    cursor: pointer;
-}
-
-.edit-menu div:hover {
-    background: #f0f0f0;
-}
-
-  
-/* Selection and hover states */
-
-.dot-container.editing::before {
-    border: none;
-}
-
-.dot-container.editing .dot,
-.dot-container.editing .coordinate-text {
-    pointer-events: auto;
-}
-
-/* Additional hover and selection styles */
-.user-dot-label ~ .dot-container.selected::before,
-.dot-container.user-dot-label.selected::before {
-    border: none;
-}
-
-.dot-container:has(.label-input):hover::before,
-.dot-container:has(.label-input).selected::before {
-    border: none !important;
-}
-
-/* Hover and selected states */
-.dot-container:hover .connecting-line {
-    border-top-color: #000000 !important;
-    opacity: 1;
-    border-top-style: solid;
-}
-
-.dot-container.selected .connecting-line,
-.dot-container.multi-selected .connecting-line {
-    border-top-color: #3b82f6 !important;
-    opacity: 1;
-    border-top-style: solid;
-}
-
-.dot-container:hover .label-container {
-    border-color: #000000 !important;
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
-}
-
-.dot-container.selected .label-container,
-.dot-container.multi-selected .label-container {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
-}
-
-/* Dot Label & Connecting Line */
-
-/* Connecting line styles */
-.connecting-line {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    height: 1px;
-    transform-origin: left center;
-    border-top: 1px solid #d1d5db;
-    pointer-events: none;
-    z-index: 1;
-    background-color: #d1d5db;
-    display: block;
-    opacity: 0.6;
-    transition: all 0.2s ease-in-out;
-}
-
-
-/* Add a hover effect for the line */
-.dot-container:hover .connecting-line {
-    border-top: 1px solid #000000;
-    border-top-color: #000000 !important;
-    opacity: 1;
-    background-color: #000000;
-}
-
-/* Selected state for the line */
-.dot-container.selected .connecting-line,
-.dot-container.multi-selected .connecting-line {
-    border-top: 1px solid #3b82f6 !important;
-    opacity: 1;
-    background-color: #3b82f6;
-}
-
-/* Label container styles */
-.label-container {
-    position: absolute;
-    background-color: rgba(255, 255, 255, 0.95);
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    padding: 8px;
-    cursor: move;
-    white-space: nowrap;
-    display: inline-block;
-    z-index: 2;
-    transition: all 0.2s ease-in-out;
-    /* Ensure consistent vertical centering */
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-
-/* When selected or dragging */
-.dot-container.selected .connecting-line,
-.dot-container.dragging .connecting-line {
-    border-top-style: solid;
-    border-top-color: #2563eb;
-}
-
-
-/* Multi-dot Selection */
-.dot-container.multi-selected .dot {
-    background-color: rgba(0, 123, 255, 0.5); /* Light blue highlight */
-    border: 2px solid blue;
-}
-
+/* Selection styles */
 .selection-rectangle {
     position: absolute;
     border: 1px solid rgba(0, 123, 255, 0.7);
